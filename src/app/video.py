@@ -5,31 +5,35 @@ import bpy
 import os
 import logging
 
+from time import perf_counter
+
 from sfdi.video import Projector, Camera
 from sfdi.definitions import ROOT_DIR
-from app.blender import stdout_redirected
+from sfdi.io.std import stdout_redirected
 
 class BlenderProjector(Projector):
-    def __init__(self, obj_name="ImageProjector"):    
+    def __init__(self, imgs=[], obj_name="ImageProjector"):
+        super().__init__(imgs=imgs)
+
         self.obj_name = obj_name
         
         self.obj = bpy.data.objects[obj_name]
         self.proj_obj = bpy.data.objects[f'{obj_name}_']
-
-    def display(self, img): # Blender needs images in RGB format
-        img_node = None
+        
+        self.img_node = None
         for obj in self.proj_obj.data.node_tree.nodes:
             if obj.label == "ProjectionImage":
-                img_node = obj
+                self.img_node = obj
                 break
         else:
             raise Exception("Couldn't find ProjectionImage Light Node (to set the projection texture)")
+
+    def display(self): # Blender needs images in RGB format
+        img = super().display()
         
-        # Put image in correct format for Blender
-        #resized_img = cv2.resize(img, dsize=(self.width, self.height), interpolation=cv2.INTER_CUBIC)
+        if img is None: return None
         
-        #cv2.imshow('Test', resized_img)
-        #cv2.waitKey(0)
+        self.logger.info("Projecting image")
         
         # Set the projector image to img
         b_image = bpy.data.images.new("ProjectionImage", width=img.shape[0], height=img.shape[1])
@@ -38,10 +42,16 @@ class BlenderProjector(Projector):
         
         b_image.pixels = img.ravel()
         
-        img_node.image = b_image
+        self.img_node.image = b_image
+        
+        return b_image
 
 class BlenderCamera(Camera):
-    def __init__(self, resolution=(1280, 720), use_gpu=True):
+    def __init__(self, camera_name='', resolution=(1280, 720), use_gpu=True):
+        super().__init__(resolution=resolution)
+            
+        self.camera_name = camera_name
+        
         # Need to use cycles for Blender
         bpy.data.scenes[0].render.engine = "CYCLES"
         
@@ -58,23 +68,28 @@ class BlenderCamera(Camera):
         # Set camera resolution
         bpy.context.scene.render.resolution_x = resolution[0]
         bpy.context.scene.render.resolution_y = resolution[1]
-    
+
     def capture(self):
         temp_path = os.path.join(ROOT_DIR, 'temp.jpg')
         
         bpy.context.scene.render.filepath = temp_path
         
-        with stdout_redirected():
+        self.logger.info("Rendering camera image")
+        
+        calc_time = perf_counter()
+        with stdout_redirected(): # Hide spam output
             bpy.ops.render.render(write_still=True)
+
+        self.logger.info(f"Rendered in {(perf_counter() - calc_time):.2f} seconds")
         
         img = cv2.imread(temp_path)
 
-        try: 
+        try:
             os.remove(temp_path)
-        except: 
-            print("Could not delete temporary render image file")
+        except:
+            self.logger.error("Could not delete temporary render image file")
 
-        return cv2.cvtColor(img, cv2.COLOR_BGR2RGBA)
+        return img
     
     def set_resolution(self, width, height):
         # Set camera resolution
