@@ -4,13 +4,15 @@ import logging
 from tkinter import filedialog as fd
 
 from sfdi.experiment import Experiment
+from sfdi.io.std import stdout_redirected
 
 def load_scene():
     logger = logging.getLogger("sfdi")
             
     try:
         filepath = fd.askopenfilename()
-        bpy.ops.wm.open_mainfile(filepath=filepath)
+        with stdout_redirected():
+            bpy.ops.wm.open_mainfile(filepath=filepath)
 
     except Exception as e:
         logger.error(e)
@@ -21,8 +23,8 @@ def load_scene():
     return True
 
 class BlenderExperiment(Experiment):
-    def __init__(self, cameras, projector, target_names, use_gpu=False, debug=False):
-        super().__init__(cameras, projector, 0.0, debug)
+    def __init__(self, cameras, projector, target_names, use_gpu=False):
+        super().__init__(cameras, projector, 0.0)
 
         # Set objects to hide for reference measurements
         self.target_names = target_names
@@ -36,7 +38,7 @@ class BlenderExperiment(Experiment):
 
     def show_objects(self, value):
         for name in self.target_names:
-            bpy.data.objects[name].hide_render = value
+            bpy.data.objects[name].hide_render = (not value)
 
     def use_gpu(self, value):
         if value:
@@ -50,9 +52,9 @@ class BlenderExperiment(Experiment):
             #     d["use"] = 1 # Using all devices, include GPU and CPU
 
     def on_ref_finish(self):
-        self.logger.info("Hiding objects")
-        self.show_objects(False)
+        self.logger.debug('Attempting to show target objects')
+        self.show_objects(True)
 
     def on_measurement_finish(self):
-        self.logger.info("Hiding objects")
-        self.show_objects(True)
+        self.logger.debug('Attempting to hide target objects')
+        self.show_objects(False)

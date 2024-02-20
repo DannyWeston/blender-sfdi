@@ -15,9 +15,6 @@ def handle_args():
 
     parser.add_argument("--camera", type=str, default='/dev/video0',
         help="Path to the camera device to use")
-
-    parser.add_argument("--debug", type=bool, default=False,
-        help="Toggle debug mode")
     
     parser.add_argument("--interactive", type=bool, default=False,
         help="Toggle interactive console mode (will ignore runs flag)")

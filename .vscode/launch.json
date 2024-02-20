@@ -11,7 +11,10 @@
             "cwd": "${workspaceRoot}\\src\\",
             "module": "app",
             "console": "integratedTerminal",
-            "justMyCode": false
+            "justMyCode": false,
+            "args": [
+                "--debug",
+            ]
         },
     ]
 }

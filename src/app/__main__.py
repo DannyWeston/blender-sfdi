@@ -6,6 +6,8 @@
 
 import numpy as np
 
+import sfdi
+
 from sfdi.fringes import Fringes
 from sfdi.io.repositories import ResultRepository, ImageRepository
 
@@ -15,19 +17,13 @@ from sfdi.profilometry import ClassicPhaseHeight, PolyPhaseHeight
 from app.blender import BlenderExperiment, load_scene
 from app.video import BlenderProjector, BlenderCamera
 
-def show_images(imgs, title, grey=False):
-    for img in imgs: display_image(img, title=title, grey=grey)
-
 def main():
-    from app.args import handle_args
-    args = handle_args()
-    
-    # Try to load a blender scene which the user picks
-    if not load_scene(): return
-    
     render = True
     
     if render:
+        # Try to load a blender scene which the user picks
+        if not load_scene(): return
+        
         n = 3 # 3 Measurements per experiment
         fringes = Fringes.from_generator(1024, 1024, 32, n=n) # 32 fringes (1024 / 32)
         
@@ -38,8 +34,7 @@ def main():
             cameras=cameras,
             projector=projector,
             target_names=["Sphere"],
-            use_gpu=True,
-            debug=args["debug"]
+            use_gpu=True
         )
 
         # Run the experiment and save the results
@@ -53,7 +48,7 @@ def main():
         ref_imgs = expresult.ref_imgs
     else:
         # Load the images from file
-        path = f'C:\\git\\sfdi\\src\\sfdi\\data\\results\\20240220_154928'
+        path = f'D:\\git\\sfdi\\src\\sfdi\\data\\results\\20240220_220551'
         img_repo = ImageRepository(path)
 
         camera_count = 2    # Number of cameras
@@ -62,33 +57,27 @@ def main():
         imgs = []
         ref_imgs = []
 
-        for cam_i in range(camera_count):
-            imgs.append([img_repo.load(f'cam{cam_i}_refimg{i}.jpg') for i in range(img_count)])
-            ref_imgs.append([img_repo.load(f'cam{cam_i}_img{i}.jpg') for i in range(img_count)])
+        for i in range(img_count):
+            imgs.append([img_repo.load(f'cam{cam_i}_img{i}.jpg') for cam_i in range(camera_count)])
+            ref_imgs.append([img_repo.load(f'cam{cam_i}_refimg{i}.jpg') for cam_i in range(camera_count)])
 
-    # Show images
-    if args["debug"]:
-        for i, cam in enumerate(imgs): show_images(cam, f'Camera {i} - Measurement Image')
-        for i, cam in enumerate(ref_imgs): show_images(cam, f'Camera {i} - Reference Image')
-        
     # Convert to greyscale
     # Crop to region of interest
     img_roi = (100, 320)
 
-    for cam_imgs in ref_imgs:
-        for img_i in range(len(cam_imgs)):
-            cam_imgs[img_i] = rgb2grey(cam_imgs[img_i])
-            cam_imgs[img_i] = centre_crop_img(cam_imgs[img_i], img_roi[0], img_roi[1])
+    for phase in ref_imgs:
+        for cam in range(len(phase)):
+            phase[cam] = rgb2grey(phase[cam])
+            phase[cam] = centre_crop_img(phase[cam], img_roi[0], img_roi[1])
 
-    for cam_imgs in imgs:
-        for img_i in range(len(cam_imgs)):
-            cam_imgs[img_i] = rgb2grey(cam_imgs[img_i])
-            cam_imgs[img_i] = centre_crop_img(cam_imgs[img_i], img_roi[0], img_roi[1])
-    
-    # Show images
-    if args["debug"]:
-        for i, cam in enumerate(imgs): show_images(cam, f'Camera {i} - Images', True)
-        for i, cam in enumerate(ref_imgs): show_images(cam, f'Camera {i} - Reference Images', True)
+    for phase in imgs:
+        for cam in range(len(phase)):
+            phase[cam] = rgb2grey(phase[cam])
+            phase[cam] = centre_crop_img(phase[cam], img_roi[0], img_roi[1])
+                
+    return
+
+    # TODO: Fix polynomial calibration
 
     # Calculate heightmap using converted to greyscale images
     spatial_freq = 0.032        # Pairs per mm (32 pairs / m = 32 p / 1000mm = 32 pairs per mm)
@@ -98,9 +87,10 @@ def main():
     #c_heightmap = ClassicPhaseHeight(spatial_freq, ref_dist, cam_plane_dist).heightmap(ref_imgs, imgs)
     #h_min, h_max = np.min(c_heightmap), np.max(c_heightmap)
     #display_image(c_heightmap, grey=True, title='Heightmap', vmin=h_min, vmax=h_max)
+    
 
     poly_heightmap = PolyPhaseHeight()
-
+    
     calibrate = True
     if calibrate:
         # Load heightmap
