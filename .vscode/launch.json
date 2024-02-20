@@ -10,7 +10,8 @@
             "request": "launch",
             "cwd": "${workspaceRoot}\\src\\",
             "module": "app",
-            "console": "integratedTerminal"
-        }
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
     ]
 }

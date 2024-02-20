@@ -38,6 +38,7 @@ class BlenderProjector(Projector):
         # Set the projector image to img
         b_image = bpy.data.images.new("ProjectionImage", width=img.shape[0], height=img.shape[1])
         
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2RGBA) # Blender needs alpha channel
         img = (img.astype(np.float16)) / 255.0 # Blender needs images as float16s between 0 and 1
         
         b_image.pixels = img.ravel()
@@ -47,29 +48,24 @@ class BlenderProjector(Projector):
         return b_image
 
 class BlenderCamera(Camera):
-    def __init__(self, camera_name='', resolution=(1280, 720), use_gpu=True):
+    def __init__(self, camera_name='Camera1', resolution=(1280, 720)):
         super().__init__(resolution=resolution)
-            
-        self.camera_name = camera_name
-        
-        # Need to use cycles for Blender
-        bpy.data.scenes[0].render.engine = "CYCLES"
-        
-        if use_gpu:
-            # Set the device and feature set
-            bpy.context.scene.cycles.device = "GPU"
-            
-            bpy.context.preferences.addons["cycles"].preferences.compute_device_type = "CUDA"
-            bpy.context.preferences.addons["cycles"].preferences.get_devices()
-            
-            for d in bpy.context.preferences.addons["cycles"].preferences.devices:
-                d["use"] = 1 # Using all devices, include GPU and CPU
 
-        # Set camera resolution
-        bpy.context.scene.render.resolution_x = resolution[0]
-        bpy.context.scene.render.resolution_y = resolution[1]
+        self.obj = bpy.data.objects[camera_name]
+        self.camera_obj = bpy.data.objects[f'{camera_name}_']
+
+        self.camera_name = camera_name
 
     def capture(self):
+        # Need to set this camera as the renderer to be safe
+        bpy.context.scene.camera = self.camera_obj
+
+        # Set scene render resolution to this camera's resolution
+        bpy.context.scene.render.resolution_x = self.resolution[0]
+        bpy.context.scene.render.resolution_y = self.resolution[1]
+
+        # Render scene to temporary file
+
         temp_path = os.path.join(ROOT_DIR, 'temp.jpg')
         
         bpy.context.scene.render.filepath = temp_path
@@ -82,7 +78,7 @@ class BlenderCamera(Camera):
 
         self.logger.info(f"Rendered in {(perf_counter() - calc_time):.2f} seconds")
         
-        img = cv2.imread(temp_path)
+        img = cv2.imread(temp_path) # Reload image from disk
 
         try:
             os.remove(temp_path)
@@ -90,9 +86,8 @@ class BlenderCamera(Camera):
             self.logger.error("Could not delete temporary render image file")
 
         return img
-    
+
     def set_resolution(self, width, height):
-        # Set camera resolution
-        bpy.context.scene.render.resolution_x, bpy.context.scene.render.resolution_y = width, height
-        
+        self.resolution = width, height
+
         return self
