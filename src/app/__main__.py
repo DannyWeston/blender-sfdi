@@ -10,15 +10,40 @@ import sfdi
 
 from sfdi.fringes import Fringes
 from sfdi.io.repositories import ResultRepository, ImageRepository
-
+from sfdi.calibration.geometric import camera_calibration
 from sfdi.profilometry import PolyPhaseHeight, ClassicPhaseHeight
+from sfdi.definitions import CALIBRATION_DIR
 
 from app.blender import BlenderExperiment
 from app.video import BlenderProjector, BlenderCamera
 from app.args import handle_args
 
+# Last camera calibration results:
+# Camera matrix:      [[1.23885305e+03,   0.00000000e+00,     6.16820237e+02],
+#                     [0.00000000e+00,    1.23411087e+03,     3.62838367e+02],
+#                     [0.00000000e+00,    0.00000000e+00,     1.00000000e+00]]
+
+# Dist matrix:        [[-0.0140819,       0.12176221,         -0.00068668,         -0.00381937,       -0.32111301]]
+
+# Optimal matrix:     [[1.23257834e+03,   0.00000000e+00,     6.11851257e+02],
+#                     [0.00000000e+00,    1.22242477e+03,     3.62396200e+02],
+#                     [0.00000000e+00,    0.00000000e+00,     1.00000000e+00]]
+
 def main():
     args = handle_args()
+    
+    # Calibrate the camera
+    
+    # ir = ImageRepository(CALIBRATION_DIR)
+    
+    # cb_imgs = []
+    # for i in range(16):
+    #     img = ir.load(f'checkerboard_{i}.jpg')
+    #     if img is not None: cb_imgs.append(img)
+    
+    # camera_calibration(cb_imgs)
+    
+    # Calibrate the projector
 
     render = True
     
@@ -86,9 +111,9 @@ def main():
 
     ph = ClassicPhaseHeight(ref_dist, sensor_dist, sf)
 
-    heightmap = ph.heightmap(ref_imgs, imgs)
+    heightmap = ph.heightmap(ref_imgs[0], imgs[0])
 
-    sfdi.display_image(heightmap, True,'Classic Phase-to-Heightmap Result', 
+    sfdi.display_image(heightmap, True,'Classic Phase-to-Heightmap Result',
                        np.min(heightmap), np.max(heightmap))
     
     return
