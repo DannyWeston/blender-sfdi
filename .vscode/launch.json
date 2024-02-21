@@ -8,12 +8,27 @@
             "name": "blender-sfdi",
             "type": "debugpy",
             "request": "launch",
+            "cwd": "${workspaceRoot}",
+            "module": "src.app",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--debug",
+                "--blend=../fringe_projection.blend"
+            ]
+        },
+        {
+            "name": "blender-sfdi (GPU)",
+            "type": "debugpy",
+            "request": "launch",
             "cwd": "${workspaceRoot}\\src\\",
             "module": "app",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
                 "--debug",
+                "--blend=../fringe_projection.blend",
+                "--use-gpu",
             ]
         },
     ]

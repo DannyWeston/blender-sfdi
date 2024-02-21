@@ -1,26 +1,8 @@
 import bpy
 import logging
 
-from tkinter import filedialog as fd
-
 from sfdi.experiment import Experiment
 from sfdi.io.std import stdout_redirected
-
-def load_scene():
-    logger = logging.getLogger("sfdi")
-            
-    try:
-        filepath = fd.askopenfilename()
-        with stdout_redirected():
-            bpy.ops.wm.open_mainfile(filepath=filepath)
-
-    except Exception as e:
-        logger.error(e)
-        return False
-    
-    logger.info("Successfully loaded blender file")
-    
-    return True
 
 class BlenderExperiment(Experiment):
     def __init__(self, cameras, projector, target_names, use_gpu=False):
@@ -36,12 +18,32 @@ class BlenderExperiment(Experiment):
 
         self.show_objects(False) # Hide objects ready for reference images
 
+    @staticmethod
+    def load_scene(blend_path):
+        logger = logging.getLogger("sfdi")
+
+        if blend_path is None or blend_path == '':
+            return False
+                
+        try:
+            with stdout_redirected():
+                bpy.ops.wm.open_mainfile(filepath=blend_path)
+
+        except Exception as e:
+            logger.error(e)
+            return False
+        
+        logger.info("Successfully loaded blender file")
+        
+        return True
+
     def show_objects(self, value):
         for name in self.target_names:
             bpy.data.objects[name].hide_render = (not value)
 
     def use_gpu(self, value):
         if value:
+            self.logger.info("Blender set to use GPU for rendering")
             # Set the device and feature set
             bpy.context.scene.cycles.device = "GPU"
             

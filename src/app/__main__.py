@@ -11,18 +11,21 @@ import sfdi
 from sfdi.fringes import Fringes
 from sfdi.io.repositories import ResultRepository, ImageRepository
 
-from sfdi import rgb2grey, display_image, centre_crop_img
-from sfdi.profilometry import ClassicPhaseHeight, PolyPhaseHeight
+from sfdi.profilometry import PolyPhaseHeight
 
-from app.blender import BlenderExperiment, load_scene
+from app.blender import BlenderExperiment
 from app.video import BlenderProjector, BlenderCamera
+from app.args import handle_args
 
 def main():
+    args = handle_args()
+
     render = True
     
     if render:
         # Try to load a blender scene which the user picks
-        if not load_scene(): return
+        if not BlenderExperiment.load_scene(args['blend']):
+            return
         
         n = 3 # 3 Measurements per experiment
         fringes = Fringes.from_generator(1024, 1024, 32, n=n) # 32 fringes (1024 / 32)
@@ -34,7 +37,7 @@ def main():
             cameras=cameras,
             projector=projector,
             target_names=["Sphere"],
-            use_gpu=True
+            use_gpu=args["use_gpu"]
         )
 
         # Run the experiment and save the results
@@ -67,13 +70,13 @@ def main():
 
     for phase in ref_imgs:
         for cam in range(len(phase)):
-            phase[cam] = rgb2grey(phase[cam])
-            phase[cam] = centre_crop_img(phase[cam], img_roi[0], img_roi[1])
+            phase[cam] = sfdi.rgb2grey(phase[cam])
+            phase[cam] = sfdi.centre_crop_img(phase[cam], img_roi[0], img_roi[1])
 
     for phase in imgs:
         for cam in range(len(phase)):
-            phase[cam] = rgb2grey(phase[cam])
-            phase[cam] = centre_crop_img(phase[cam], img_roi[0], img_roi[1])
+            phase[cam] = sfdi.rgb2grey(phase[cam])
+            phase[cam] = sfdi.centre_crop_img(phase[cam], img_roi[0], img_roi[1])
                 
     return
 
