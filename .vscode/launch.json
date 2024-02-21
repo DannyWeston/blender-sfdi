@@ -8,8 +8,8 @@
             "name": "blender-sfdi",
             "type": "debugpy",
             "request": "launch",
-            "cwd": "${workspaceRoot}",
-            "module": "src.app",
+            "cwd": "${workspaceRoot}\\src\\",
+            "module": "app",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [

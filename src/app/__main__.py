@@ -11,7 +11,7 @@ import sfdi
 from sfdi.fringes import Fringes
 from sfdi.io.repositories import ResultRepository, ImageRepository
 
-from sfdi.profilometry import PolyPhaseHeight
+from sfdi.profilometry import PolyPhaseHeight, ClassicPhaseHeight
 
 from app.blender import BlenderExperiment
 from app.video import BlenderProjector, BlenderCamera
@@ -28,10 +28,10 @@ def main():
             return
         
         n = 3 # 3 Measurements per experiment
-        fringes = Fringes.from_generator(1024, 1024, 32, n=n) # 32 fringes (1024 / 32)
+        fringes = Fringes.from_generator(1024, 1024, 32, 0, n=n) # 32 fringes (1024 / 32)
         
         projector = BlenderProjector(fringes)
-        cameras = [BlenderCamera('Camera1'), BlenderCamera('Camera2')]
+        cameras = [BlenderCamera('Camera1')]
         
         exp = BlenderExperiment(
             cameras=cameras,
@@ -78,14 +78,22 @@ def main():
             phase[cam] = sfdi.rgb2grey(phase[cam])
             phase[cam] = sfdi.centre_crop_img(phase[cam], img_roi[0], img_roi[1])
                 
+
+    # Calculate heightmap using ClassPhaseHeight technique
+    sf = 32                     # Roughly 32 pairs per meter
+    ref_dist = 1                # m
+    sensor_dist = 0.2           # m
+
+    ph = ClassicPhaseHeight(ref_dist, sensor_dist, sf)
+
+    heightmap = ph.heightmap(ref_imgs, imgs)
+
+    sfdi.display_image(heightmap, True,'Classic Phase-to-Heightmap Result', 
+                       np.min(heightmap), np.max(heightmap))
+    
     return
 
     # TODO: Fix polynomial calibration
-
-    # Calculate heightmap using converted to greyscale images
-    spatial_freq = 0.032        # Pairs per mm (32 pairs / m = 32 p / 1000mm = 32 pairs per mm)
-    ref_dist = 1000.0           # mm
-    cam_plane_dist = 200.0      # mm
 
     #c_heightmap = ClassicPhaseHeight(spatial_freq, ref_dist, cam_plane_dist).heightmap(ref_imgs, imgs)
     #h_min, h_max = np.min(c_heightmap), np.max(c_heightmap)
