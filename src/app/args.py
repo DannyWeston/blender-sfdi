@@ -9,6 +9,8 @@ def handle_args():
 
     parser.add_argument('--blend', help='Path to the \".blend\" file to use')
 
+    parser.add_argument('--debug', action='store_true')
+    
     # By default use 3 images with names fringe_<0-2>.jpg
     # parser.add_argument("--fringes", nargs='+', type=str,
     #     default=[f'{FRINGES_DIR}/fringes_{i}.jpg' for i in range(3)],

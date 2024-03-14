@@ -31,5 +31,19 @@
                 "--use-gpu",
             ]
         },
+        {
+            "name": "blender-sfdi CALIBRATION (GPU)",
+            "type": "debugpy",
+            "request": "launch",
+            "cwd": "${workspaceRoot}\\src\\",
+            "module": "calibration",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--blend=../fringe_projection.blend",
+                "--use-gpu",
+                "--debug"
+            ]
+        },
     ]
 }

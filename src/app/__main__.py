@@ -5,162 +5,100 @@
 # OPTIMlab
 
 import numpy as np
-
-import sfdi
+import cv2
 
 from sfdi.fringes import Fringes
-from sfdi.io.repositories import ResultRepository, ImageRepository
-from sfdi.calibration.geometric import camera_calibration
 from sfdi.profilometry import PolyPhaseHeight, ClassicPhaseHeight
-from sfdi.definitions import CALIBRATION_DIR
+from sfdi.calibration import apply_correction
+from sfdi.services import ResultService, CalibrationService
+from sfdi import show_surface
 
-from app.blender import BlenderExperiment
+from app.blender import BlenderExperiment, load_scene, render_with_gpu
 from app.video import BlenderProjector, BlenderCamera
 from app.args import handle_args
 
-# Last camera calibration results:
-# Camera matrix:      [[1.23885305e+03,   0.00000000e+00,     6.16820237e+02],
-#                     [0.00000000e+00,    1.23411087e+03,     3.62838367e+02],
-#                     [0.00000000e+00,    0.00000000e+00,     1.00000000e+00]]
-
-# Dist matrix:        [[-0.0140819,       0.12176221,         -0.00068668,         -0.00381937,       -0.32111301]]
-
-# Optimal matrix:     [[1.23257834e+03,   0.00000000e+00,     6.11851257e+02],
-#                     [0.00000000e+00,    1.22242477e+03,     3.62396200e+02],
-#                     [0.00000000e+00,    0.00000000e+00,     1.00000000e+00]]
+import matplotlib.pyplot as plt
 
 def main():
     args = handle_args()
+    if not load_scene(args['blend']): return
+    render_with_gpu(args['use_gpu'])
     
-    # Calibrate the camera
-    
-    # ir = ImageRepository(CALIBRATION_DIR)
-    
-    # cb_imgs = []
-    # for i in range(16):
-    #     img = ir.load(f'checkerboard_{i}.jpg')
-    #     if img is not None: cb_imgs.append(img)
-    
-    # camera_calibration(cb_imgs)
-    
-    # Calibrate the projector
-
     render = True
-    
     if render:
-        # Try to load a blender scene which the user picks
-        if not BlenderExperiment.load_scene(args['blend']):
-            return
+        # Load calibration values
+        cali_service = CalibrationService()
         
-        n = 3 # 3 Measurements per experiment
-        fringes = Fringes.from_generator(1024, 1024, 32, 0, n=n) # 32 fringes (1024 / 32)
+        camera_name = 'Camera1'
+        projector_name = 'Projector1'
+
+        gamma_calib, lens_calib, proj_calib = cali_service.load_calibrations(camera_name, projector_name)
+
+        cam_mat = np.array(lens_calib["cam_mat"])
+        dist_mat = np.array(lens_calib["dist_mat"])
+        optimal_mat = np.array(lens_calib["optimal_mat"])
+        camera = BlenderCamera(camera_name, (3840, 2160), cam_mat, dist_mat, optimal_mat)
         
-        projector = BlenderProjector(fringes)
-        cameras = [BlenderCamera('Camera1')]
-        
+        gamma_coeffs = np.array(gamma_calib["coeffs"])
+        gamma_visible = np.array(gamma_calib["visible_intensities"])
+
+        phases = 3
+        period = 16 # Pixels per period
+        width = 2048
+
+        fringes = Fringes.from_generator(width, width, period, 0, n=phases)
+        #fringes = [apply_correction(img, gamma_coeffs, np.min(gamma_visible), np.max(gamma_visible)) for img in fringes]
+        fringes = Fringes(fringes)
+        projector = BlenderProjector(fringes, projector_name)
+
+        cameras = [camera]
         exp = BlenderExperiment(
             cameras=cameras,
             projector=projector,
-            target_names=["Sphere"],
-            use_gpu=args["use_gpu"]
+            target_names=["Sphere"]
         )
 
         # Run the experiment and save the results
-        expresult = exp.run(n)
+        ref_imgs, imgs = exp.run(phases)
         
-        # Save the results
-        repo = ResultRepository()
-        repo.save(expresult)
+        res_service = ResultService.default()
+        res_data = {}
+        res_data["cameras"] = { camera.name: {"resolution": camera.resolution, "samples": camera.samples } for camera in cameras }
+        res_data["projectors"] = { projector.name: {} }
+        res_data["phases"] = phases
+        res_data["cam_count"] = len(cameras)
+        res_data["period"] = period
+        res_data["width"] = width
         
-        imgs = expresult.imgs
-        ref_imgs = expresult.ref_imgs
+        res_service.save_data(res_data, fringes, imgs, ref_imgs)
     else:
-        # Load the images from file
-        path = f'D:\\git\\sfdi\\src\\sfdi\\data\\results\\20240220_220551'
-        img_repo = ImageRepository(path)
+        res_service = ResultService.default('phase3_period16')
+        ref_imgs, imgs, data = res_service.load_data()
+        
+        phases = data["phases"]
+        period = data["period"]
+        width = data["width"]
+        
+        cameras = [BlenderCamera(name, resolution=v["resolution"], samples=v["samples"]) for name, v in data["cameras"].items()]
+        projectors = [BlenderProjector(name) for name, v in data["projectors"].items()]
+        
+        # TODO: FIX
+        projector = projectors[0]
+        camera = cameras[0]
 
-        camera_count = 2    # Number of cameras
-        img_count = 3       # Number of phases
+    # Calculate heightmap using ClassicPhaseHeight technique
+    l = 0.95076 * 1000 # mm
+    d = abs((camera.get_pos() - projector.get_pos()).length) * 1000.0 # mm
+    sf = 1.0 / ((0.950317 * 1000.0) / ((width / period) - 1.0)) #mm^-1
 
-        imgs = []
-        ref_imgs = []
+    ph = ClassicPhaseHeight(sf, d, l)
 
-        for i in range(img_count):
-            imgs.append([img_repo.load(f'cam{cam_i}_img{i}.jpg') for cam_i in range(camera_count)])
-            ref_imgs.append([img_repo.load(f'cam{cam_i}_refimg{i}.jpg') for cam_i in range(camera_count)])
-
-    # Convert to greyscale
-    # Crop to region of interest
-    img_roi = (100, 320)
-
-    for phase in ref_imgs:
-        for cam in range(len(phase)):
-            phase[cam] = sfdi.rgb2grey(phase[cam])
-            phase[cam] = sfdi.centre_crop_img(phase[cam], img_roi[0], img_roi[1])
-
-    for phase in imgs:
-        for cam in range(len(phase)):
-            phase[cam] = sfdi.rgb2grey(phase[cam])
-            phase[cam] = sfdi.centre_crop_img(phase[cam], img_roi[0], img_roi[1])
-                
-
-    # Calculate heightmap using ClassPhaseHeight technique
-    sf = 32                     # Roughly 32 pairs per meter
-    ref_dist = 1                # m
-    sensor_dist = 0.2           # m
-
-    ph = ClassicPhaseHeight(ref_dist, sensor_dist, sf)
-
-    heightmap = ph.heightmap(ref_imgs[0], imgs[0])
-
-    sfdi.display_image(heightmap, True,'Classic Phase-to-Heightmap Result',
-                       np.min(heightmap), np.max(heightmap))
-    
-    return
-
-    # TODO: Fix polynomial calibration
-
-    #c_heightmap = ClassicPhaseHeight(spatial_freq, ref_dist, cam_plane_dist).heightmap(ref_imgs, imgs)
-    #h_min, h_max = np.min(c_heightmap), np.max(c_heightmap)
-    #display_image(c_heightmap, grey=True, title='Heightmap', vmin=h_min, vmax=h_max)
-    
-
-    poly_heightmap = PolyPhaseHeight()
-    
-    calibrate = True
-    if calibrate:
-        # Load heightmap
-        img_repo = ImageRepository('C:\\Users\\psydw2\\Desktop\\')
-        heightmaps = [img_repo.load(f'heightmap.jpg')]
-
-        # Drop GB channels if present (assume they are all equal)
-        if heightmaps[0].shape[2] == 3: heightmaps[0] = heightmaps[0][:,:,0]
-
-        # Crop to same size as images
-        heightmaps[0] = centre_crop_img(heightmaps[0], img_roi[0], img_roi[1]) 
-
-        poly_heightmap = PolyPhaseHeight()
-        best = []
-        best_score = float('inf')
-
-        for i in range(2, 10):
-            coeffs, score = poly_heightmap.calibrate(heightmaps[0], ref_imgs[0], imgs[0], deg=i)
-            if score < best_score:
-                best_score = score
-                best = coeffs
-
-        print(best)
-        print(f'SSR: {best_score}')
-    else:
-        coeffs = [28.3603171, -5.37344553, 0.232223233, -0.00228115047]
-        polyheight = PolyPhaseHeight(coeffs)
-        poly_heightmap = polyheight.heightmap(ref_imgs[0], imgs[0])
-        poly_heightmap[poly_heightmap < 0] = 0
-
-        poly_min, poly_max = np.min(poly_heightmap), np.max(poly_heightmap)
-        print(poly_min, poly_max)
-
-        display_image(poly_heightmap, grey=True, title='PolyPhaseHeight Result', vmin=poly_min, vmax=poly_max)
+    heightmaps = []
+    for cam_i in range(len(imgs)):
+        heightmap = ph.heightmap(ref_imgs[cam_i], imgs[cam_i], grey=True, crop=(0.33, 0.33, 0.33, 0.25))
+        heightmap = cv2.medianBlur(heightmap, 5) # Apply median filter to smooth out peaks
+        show_surface(heightmap)
+        heightmaps.append(heightmap)
 
 if __name__ == "__main__":
     main()

@@ -1,6 +1,7 @@
-src/sfdi
-src/app/data/results
+src/sfdi/
 
+*.blend1
+*.blend
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
