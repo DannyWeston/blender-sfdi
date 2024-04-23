@@ -14,21 +14,7 @@
             "justMyCode": false,
             "args": [
                 "--debug",
-                "--blend=../fringe_projection.blend"
-            ]
-        },
-        {
-            "name": "blender-sfdi (GPU)",
-            "type": "debugpy",
-            "request": "launch",
-            "cwd": "${workspaceRoot}\\src\\",
-            "module": "app",
-            "console": "integratedTerminal",
-            "justMyCode": false,
-            "args": [
-                "--debug",
-                "--blend=../fringe_projection.blend",
-                "--use-gpu",
+                "--blend=C:\\OneDrive\\OneDrive - The University of Nottingham\\university\\year1\\Code\\BlenderFPP\\fringe_projection.blend",
             ]
         },
         {

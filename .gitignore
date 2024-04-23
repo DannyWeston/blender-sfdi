@@ -1,4 +1,7 @@
-src/sfdi/
+sfdi_addon/sfdi/
+
+Blender/
+blender.lnk
 
 *.blend1
 *.blend

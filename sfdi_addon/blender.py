@@ -10,14 +10,13 @@ def load_scene(blend_path):
 
     if blend_path is None or blend_path == '':
         return False
-            
+
     try:
         with stdout_redirected():
             bpy.ops.wm.open_mainfile(filepath=blend_path)
-
-    except Exception as e:
-        logger.error(e)
-        return False
+            
+    except Exception as ex:
+        logger.error(ex)
     
     logger.info("Successfully loaded blender file")
     
