@@ -1,5 +1,9 @@
 import bpy
 
+from sfdi_addon.video import CameraFactory, ProjectorFactory
+
+from sfdi_addon.experiment import BlenderExperiment
+
 class OP_RegisterProj(bpy.types.Operator):
     bl_idname = "op.register_proj"
     bl_label = "TODO: Write label"
@@ -59,9 +63,21 @@ class OP_AddProj(bpy.types.Operator):
         self.report({'INFO'}, f"Adding a projector")
         
         # TODO: add logic to add a projector
+        # Show a modal popup with some configurables (to match a specific projector?)
         
         return {'FINISHED'}
 
+class OP_AddCamera(bpy.types.Operator):
+    bl_idname = "menu.add_camera"
+    bl_label = "SFDI Camera"
+
+    def execute(self, context):
+        self.report({'INFO'}, f"Adding a camera")
+        
+        # TODO: Add a camera
+        # Show a modal popup with some configurables (such as selecting certain camera etc)
+        
+        return {'FINISHED'}
 
 # class OP_RegisterCamera(bpy.types.Operator):
 #     bl_idname = "op.register_proj"
@@ -127,6 +143,7 @@ classes = [
     OP_RegisterProj,
     OP_UnregisterProj,
     OP_AddProj,
+    OP_AddCamera,
     
     # OP_RegisterCamera,
     # OP_UnregisterCamera
@@ -139,6 +156,7 @@ def register():
         bpy.utils.register_class(cls)
         
     bpy.types.VIEW3D_MT_add.append(lambda self, context: self.layout.operator(OP_AddProj.bl_idname))
+    bpy.types.VIEW3D_MT_add.append(lambda self, context: self.layout.operator(OP_AddCamera.bl_idname))
 
 def unregister():
     for cls in classes:

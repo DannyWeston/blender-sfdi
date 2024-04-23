@@ -3,7 +3,6 @@ import cv2
 import bpy
 
 import os
-import logging
 
 from time import perf_counter
 
@@ -14,12 +13,12 @@ from sfdi.io.std import stdout_redirected
 class BlenderProjector(Projector):
     def __init__(self, imgs=[], name='Projector1'):
         super().__init__(imgs=imgs, name='Projector1')
-        
+    
         self.obj = bpy.data.objects[name]
-        self.proj_obj = bpy.data.objects[f'{name}_']
+        self.model_obj = bpy.data.objects[f'{name}_']
         
         self.img_node = None
-        for obj in self.proj_obj.data.node_tree.nodes:
+        for obj in self.obj.data.node_tree.nodes:
             if obj.label == "ProjectionImage":
                 self.img_node = obj
                 break
@@ -46,10 +45,10 @@ class BlenderProjector(Projector):
         return b_image
 
     def enabled(self, value):
-        self.proj_obj.hide_render = not value
+        self.obj.hide_render = not value
         
     def get_pos(self):
-        return self.proj_obj.matrix_world.to_translation()
+        return self.obj.matrix_world.to_translation()
 
 class BlenderCamera(Camera):
     def __init__(self, name='Camera1', resolution=(1920, 1080), cam_mat=None, dist_mat=None, optimal_mat=None, samples=16):
@@ -102,3 +101,9 @@ class BlenderCamera(Camera):
         self.resolution = width, height
 
         return self
+    
+
+class CameraFactory:
+    @staticmethod
+    def DefaultCamera():
+        return None
