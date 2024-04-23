@@ -1,7 +1,0 @@
-128 light samples
-
-0.25m projector-camera separation
-
-15deg camera tilt
-
-32 fringes
