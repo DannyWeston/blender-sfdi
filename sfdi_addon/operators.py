@@ -6,15 +6,14 @@ class OP_RegisterProj(bpy.types.Operator):
     
     @classmethod
     def poll(cls, context):
-        return context.object.type == "LIGHT"
-            
+        fps = context.scene.FringeProjectors
+
+        return (context.object.type == "LIGHT") and (fps.get_id_by_name(context.object.name) is None)
+
     def execute(self, context):
         selected = context.object
         
         fps = context.scene.FringeProjectors
-        
-        if selected.name in fps.items:
-            return {'FINISHED'}
         
         new_item = fps.items.add()
         new_item.name = selected.name
@@ -28,14 +27,26 @@ class OP_RegisterProj(bpy.types.Operator):
 class OP_UnregisterProj(bpy.types.Operator):
     bl_idname = "op.unregister_proj"
     bl_label = "TODO: Write label"
+
+    @classmethod
+    def poll(cls, context):
+        fps = context.scene.FringeProjectors
+
+        if len(fps.items) < 1: return False 
+
+        return not (fps.get_id_by_name(context.object.name) is None)
             
     def execute(self, context):
         fps = context.scene.FringeProjectors
+        selected = context.object
 
-        if len(fps.items) < 1: return {'FINISHED'}
-        
+        fps.id = fps.get_id_by_name(selected.name)
+        if fps.id is None: return {'FINISHED'}
+
         fps.items.remove(fps.id)
         
+        if len(fps.items) < 1: return {'FINISHED'}
+
         if len(fps.items) <= fps.id: fps.id = len(fps.items) - 1
             
         return {'FINISHED'}
@@ -127,7 +138,7 @@ def register():
     for cls in classes:
         bpy.utils.register_class(cls)
         
-    bpy.types.VIEW3D_MT_add.append(lambda s, ctx: s.layout.operator(OP_AddProjector.bl_idname))
+    bpy.types.VIEW3D_MT_add.append(lambda self, context: self.layout.operator(OP_AddProj.bl_idname))
 
 def unregister():
     for cls in classes:

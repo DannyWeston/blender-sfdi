@@ -7,6 +7,13 @@ class PG_FringeProj(bpy.types.PropertyGroup):
 class PG_FPCollection(bpy.types.PropertyGroup):
     id: bpy.props.IntProperty()
     items: bpy.props.CollectionProperty(type=PG_FringeProj)
+
+    def get_id_by_name(self, name):
+        found = [i for i, item in enumerate(self.items) if item.name == name]
+
+        if len(found) < 1: return None
+
+        return found[0]
     
     
 class PG_Fringes(bpy.types.PropertyGroup):

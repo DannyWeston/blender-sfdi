@@ -11,11 +11,9 @@ bl_info = {
     "category": "Development",
 }
 
-print(locals())
 if "bpy" in locals():
     import importlib
     
-    if "sfdi_addon" in locals(): importlib.reload(sfdi_addon)
     if "operators" in locals(): importlib.reload(operators)
     if "ui" in locals(): importlib.reload(ui)
     if "properties" in locals(): importlib.reload(properties)

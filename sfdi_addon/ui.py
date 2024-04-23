@@ -49,7 +49,7 @@ class PT_SFDIMenu(bpy.types.Panel):
     def draw(self, context):
         fps = context.scene.FringeProjectors
 
-        row = self.layout.row(align=True)
+        self.layout.row(align=True)
         
         self.layout.label(text="Experiment Projectors")
         
