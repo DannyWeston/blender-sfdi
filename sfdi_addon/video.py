@@ -101,9 +101,13 @@ class BlenderCamera(Camera):
         self.resolution = width, height
 
         return self
-    
-
+ 
 class CameraFactory:
+    @staticmethod
+    def DefaultCamera():
+        return None
+    
+class ProjectorFactory:
     @staticmethod
     def DefaultCamera():
         return None

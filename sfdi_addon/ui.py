@@ -1,6 +1,6 @@
 import bpy
 
-from sfdi_addon.operators import OP_RegisterProj, OP_UnregisterProj
+from sfdi_addon.operators import OP_RegisterProj, OP_UnregisterProj, OP_RegisterCamera, OP_UnregisterCamera
 
 class UL_RegisteredProjectors(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
@@ -8,37 +8,29 @@ class UL_RegisteredProjectors(bpy.types.UIList):
         
         # draw_item must handle the three layout types... Usually 'DEFAULT' and 'COMPACT' can share the same code.
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            if item:
-                if active_propname == "id":
-                    row.prop(item.obj, "name", text="", emboss=False)
+            if item and item.obj:
+                row.prop(item.obj, "name", text="", emboss=False)
             else:
                 layout.label(text="", translate=False)
-            layout.label(text=data.name, translate=False, icon_value=icon)
         elif self.layout_type == 'GRID':
             layout.alignment = 'CENTER'
             layout.label(text="", icon_value=icon)
 
-     
 class UL_RegisteredCameras(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
-        slot = item
-        
         row = layout.row()
         
         # draw_item must handle the three layout types... Usually 'DEFAULT' and 'COMPACT' can share the same code.
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            if slot:
-                if active_propname == "id":
-                    row.prop(slot.obj, "name", text="", emboss=False)
+            if item and item.obj:
+                row.prop(item.obj, "name", text="", emboss=False)
             else:
                 layout.label(text="", translate=False)
-            layout.label(text=data.name, translate=False, icon_value=icon)
         # 'GRID' layout type should be as compact as possible (typically a single icon!).
         elif self.layout_type == 'GRID':
             layout.alignment = 'CENTER'
             layout.label(text="", icon_value=icon)
 
-      
 class PT_SFDIMenu(bpy.types.Panel):
     bl_category = "SFDI"
     bl_label = "SFDI Menu"
@@ -47,17 +39,29 @@ class PT_SFDIMenu(bpy.types.Panel):
     bl_region_type = "UI"
     
     def draw(self, context):
-        fps = context.scene.FringeProjectors
+        self.layout.label(text="Experiment")
 
-        self.layout.row(align=True)
+        # Projector Section
+        self.layout.template_list("UL_RegisteredProjectors", "", context.scene, "ExProjectors", context.scene, "ExProjectorsIndex")
+        #self.layout.prop(context.scene.ExProjectors, "Projectors")
         
-        self.layout.label(text="Experiment Projectors")
+        row = self.layout.row(align=True)
+        split = row.split(factor=0.5)
+        c = split.column()
+        c.operator(OP_RegisterProj.bl_idname, text="Add Projector")
+        c = split.column()
+        c.operator(OP_UnregisterProj.bl_idname, text="Remove Projector")
         
-        self.layout.template_list("UL_RegisteredProjectors", "", fps, "items", fps, "id")
-        
-        self.layout.operator(OP_RegisterProj.bl_idname, text="Add")
-        self.layout.operator(OP_UnregisterProj.bl_idname, text="Remove")
+        # Camera section
+        self.layout.template_list("UL_RegisteredCameras", "", context.scene, "ExCameras", context.scene, "ExCamerasIndex")
+        #self.layout.prop(context.scene.ExCameras, "Cameras")
 
+        row = self.layout.row(align=True)
+        split = row.split(factor=0.5)
+        c = split.column()
+        c.operator(OP_RegisterCamera.bl_idname, text="Add Camera")
+        c = split.column()
+        c.operator(OP_UnregisterCamera.bl_idname, text="Remove Camera")
 
 class PT_ProjMenu(bpy.types.Panel):
     bl_idname = "pt.proj_menu"

@@ -10,22 +10,19 @@ class OP_RegisterProj(bpy.types.Operator):
     
     @classmethod
     def poll(cls, context):
-        fps = context.scene.FringeProjectors
+        projs = context.scene.ExProjectors
 
-        return (context.object.type == "LIGHT") and (fps.get_id_by_name(context.object.name) is None)
+        return context.object and (context.object.type == "LIGHT") and (projs.find(context.object.name) < 0)
 
     def execute(self, context):
         selected = context.object
         
-        fps = context.scene.FringeProjectors
+        projs = context.scene.ExProjectors
         
-        new_item = fps.items.add()
+        new_item = projs.add()
         new_item.name = selected.name
         new_item.obj = selected
-        
-        if fps.id < len(fps.items) - 1:
-            fps.id = len(fps.items) - 1
-            
+
         return {'FINISHED'}
 
 class OP_UnregisterProj(bpy.types.Operator):
@@ -34,24 +31,62 @@ class OP_UnregisterProj(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        fps = context.scene.FringeProjectors
+        projs = context.scene.ExProjectors
 
-        if len(fps.items) < 1: return False 
-
-        return not (fps.get_id_by_name(context.object.name) is None)
+        return context.object and (0 <= projs.find(context.object.name))
             
-    def execute(self, context):
-        fps = context.scene.FringeProjectors
+    def execute(self, context):        
+        projs = context.scene.ExProjectors
         selected = context.object
 
-        fps.id = fps.get_id_by_name(selected.name)
-        if fps.id is None: return {'FINISHED'}
-
-        fps.items.remove(fps.id)
+        selected_id = projs.find(selected.name)
         
-        if len(fps.items) < 1: return {'FINISHED'}
+        if selected_id is None: return {'FINISHED'}
 
-        if len(fps.items) <= fps.id: fps.id = len(fps.items) - 1
+        projs.remove(selected_id)
+            
+        return {'FINISHED'}
+
+class OP_RegisterCamera(bpy.types.Operator):
+    bl_idname = "op.register_camera"
+    bl_label = "TODO: Write label"
+    
+    @classmethod
+    def poll(cls, context):
+        cameras = context.scene.ExCameras
+
+        return context.object and (context.object.type == "CAMERA") and (cameras.find(context.object.name) < 0)
+
+    def execute(self, context):
+        selected = context.object
+        
+        cameras = context.scene.ExCameras
+        
+        new_item = cameras.add()
+        new_item.name = selected.name
+        new_item.obj = selected
+            
+        return {'FINISHED'}
+
+class OP_UnregisterCamera(bpy.types.Operator):
+    bl_idname = "op.unregister_camera"
+    bl_label = "TODO: Write label"
+
+    @classmethod
+    def poll(cls, context):
+        cameras = context.scene.ExCameras
+
+        return context.object and (0 <= cameras.find(context.object.name))
+            
+    def execute(self, context):
+        cameras = context.scene.ExCameras
+        selected = context.object
+
+        selected_id = cameras.find(selected.name)
+        
+        if selected_id is None: return {'FINISHED'}
+
+        cameras.remove(selected_id)
             
         return {'FINISHED'}
 
@@ -79,54 +114,6 @@ class OP_AddCamera(bpy.types.Operator):
         
         return {'FINISHED'}
 
-# class OP_RegisterCamera(bpy.types.Operator):
-#     bl_idname = "op.register_proj"
-#     bl_label = "TODO: Write label"
-    
-#     @classmethod
-#     def poll(cls, context):
-#         registered = context.scene.FringeProjectors.items
-        
-#         return (context.object.name in bpy.data.lights) and (context.object.name not in registered)
-            
-#     def execute(self, context):
-#         selected = context.object
-        
-#         fps = context.scene.FringeProjectors
-        
-#         new_item = fps.items.add()
-#         new_item.name = selected.name
-#         new_item.obj = selected
-        
-#         if fps.id < len(fps.items) - 1:
-#             fps.id = len(fps.items) - 1
-            
-#         return {'FINISHED'}
-
-# class OP_UnregisterCamera(bpy.types.Operator):
-#     bl_idname = "op.unregister_proj"
-#     bl_label = "TODO: Write label"
-    
-#     @classmethod
-#     def poll(cls, context):
-#         return context.object.name in context.scene.FringeProjectors.items
-            
-#     def execute(self, context):
-#         selected = context.object
-        
-#         fps = context.scene.FringeProjectors
-        
-#         fps.id = [i for i, item in enumerate(fps.items) if item.name == selected.name][0]
-#         fps.items.remove(fps.id)
-
-#         if len(fps.items) < 1: return {'FINISHED'}
-        
-#         if fps.id >= len(fps.items):
-#             fps.id = len(fps.items) - 1
-            
-#         return {'FINISHED'}
-
-
 class OP_RunExperiment(bpy.types.Operator):
     bl_idname = "op.run_experiment"
     bl_label = "TODO"
@@ -143,10 +130,10 @@ classes = [
     OP_RegisterProj,
     OP_UnregisterProj,
     OP_AddProj,
-    OP_AddCamera,
     
-    # OP_RegisterCamera,
-    # OP_UnregisterCamera
+    OP_RegisterCamera,
+    OP_UnregisterCamera,
+    OP_AddCamera,
     
     OP_RunExperiment,
 ]
