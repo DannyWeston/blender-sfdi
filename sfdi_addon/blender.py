@@ -5,25 +5,7 @@ from sfdi.experiment import Experiment
 from sfdi.calibration import CameraCalibration, GammaCalibration
 from sfdi.io.std import stdout_redirected
 
-def load_scene(blend_path):
-    logger = logging.getLogger("sfdi")
-
-    if blend_path is None or blend_path == '':
-        return False
-
-    try:
-        with stdout_redirected():
-            bpy.ops.wm.open_mainfile(filepath=blend_path)
-            
-    except Exception as ex:
-        logger.error(ex)
-    
-    logger.info("Successfully loaded blender file")
-    
-    # Need to use cycles for Blender
-    bpy.data.scenes[0].render.engine = "CYCLES"
-    
-    return True
+from mathutils import Vector
 
 def render_with_gpu(value):
     logger = logging.getLogger("sfdi")
@@ -75,30 +57,3 @@ class BlenderCameraCalibration(CameraCalibration):
         self.logger.debug("Generating new checkerboard orientation")
         self._cb_obj.modifiers["GeometryNodes"]["Input_5"] = seed
         self._cb_obj.data.update()
-
-class BlenderExperiment(Experiment):
-    def __init__(self, cameras, projector, target_names):
-        super().__init__(cameras, projector, 0.0)
-
-        # Set objects to hide for reference measurements
-        self.target_names = target_names
-
-        self.show_objects(False) # Hide objects ready for reference images
-
-    def show_objects(self, value):
-        for name in self.target_names:
-            bpy.data.objects[name].hide_render = (not value)
-
-    def run(self, n=3):
-        self.show_objects(False)
-        self.projector.enabled(True)
-        
-        result = super().run(n)
-        
-        self.show_objects(False)
-        self.projector.enabled(False)
-        
-        return result
-
-    def on_ref_finish(self):
-        self.show_objects(True)
