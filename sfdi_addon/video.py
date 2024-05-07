@@ -179,7 +179,7 @@ class BL_FringeProjector(FringeProjector):
         self.logger.debug("Projecting image")
         
         # Set the phase angle in ProjectorSettings for next image
-        self.settings.phase = (360.0 / self.phase_count) * self.current
+        self.settings.phase = (2.0 * pi * self.current) / self.phase_count
         
         # Set the projector image to img
         # b_image = bpy.data.images.new("ProjectionImage", width=img.shape[0], height=img.shape[1])
@@ -190,12 +190,9 @@ class BL_FringeProjector(FringeProjector):
         # b_image.pixels = img.ravel()
         
         # self.img_node.image = b_image
-
-    def next_phase(self):
-        super().next_phase()
         
     def get_pos(self):
-        return self.obj.matrix_world.to_translation()
+        return self.light_obj.matrix_world.to_translation()
 
 class BL_Camera(Camera):
     def __init__(self, name='Camera1', resolution=(1920, 1080), cam_mat=None, dist_mat=None, optimal_mat=None, samples=16):

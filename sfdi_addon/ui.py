@@ -118,6 +118,7 @@ class PT_SFDI_NStepFP(bpy.types.Panel):
     
     bl_options = {"DEFAULT_CLOSED"}
     
+    
     def draw(self, context):
         ex = context.scene.ExProperties
         
@@ -126,7 +127,13 @@ class PT_SFDI_NStepFP(bpy.types.Panel):
         grid.prop(ex, "phase_count")
         grid.prop(ex, "runs")
         
-        box.operator(OP_FPNStep.bl_idname, text="Run")
+        # Fringe Projection: N-step
+        n_step = ex.fp_n_step
+        if n_step:
+            grid = box.grid_flow(columns=2, align=True)
+            grid.prop(n_step, "sf")
+        
+            box.operator(OP_FPNStep.bl_idname, text="Run")
 
 classes = [
     UL_RegisteredProjectors,

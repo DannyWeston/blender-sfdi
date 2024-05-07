@@ -1,13 +1,18 @@
 import bpy
 import bpy_extras
 
+from sfdi import display_image, show_surface
 from sfdi.experiment import NStepFPExperiment, FringeProjection
 
 from sfdi_addon.video import BL_FringeProjector, BL_Camera, ProjectorFactory, CameraFactory
 
 from bpy_extras.object_utils import AddObjectHelper, object_data_add
 
+from mathutils import Vector
+
 def make_bl_projector(bl_proj, phase_count):
+    # TODO: Take resolution from Blender
+
     settings = bl_proj.ProjectorSettings
     return BL_FringeProjector(name=bl_proj.name, 
                                 phase_count=phase_count, 
@@ -20,7 +25,7 @@ def hide_objects(value):
     objs = bpy.context.scene.ExProperties.objects
     
     for obj in objs:
-        obj.hide_render = value
+        obj.obj.hide_render = value
 
 class OP_RegisterProj(bpy.types.Operator):
     bl_idname = "op.register_proj"
@@ -219,8 +224,7 @@ class OP_FPNStep(bpy.types.Operator):
     def execute(self, context):
         # TODO: Gather all the experiment settings, create correct objects, and run the experiment
         # TODO: Need to gather the results and present them in a pretty way
-        ex_settings = context.scene.ExProperties
-        phase_count = ex_settings.phase_count
+        # TODO: Make into a modal operator so Blender doesn't have a fit
         
         # Setup projectors
         bl_projectors = context.scene.ExProjectors
@@ -228,6 +232,8 @@ class OP_FPNStep(bpy.types.Operator):
             self.report({'ERROR'}, "You need at least 1 projector")
             return {'CANCELLED'}
         
+        ex = context.scene.ExProperties
+        phase_count = ex.phase_count
         projector = make_bl_projector(bl_projectors[0].obj, phase_count)
         
         # Setup cameras
@@ -238,18 +244,63 @@ class OP_FPNStep(bpy.types.Operator):
         
         cameras = [BL_Camera(name=c.obj.name, resolution=(1920, 1080), cam_mat=None, dist_mat=None, optimal_mat=None, samples=16) for c in bl_cameras]
         
-        # Create NStep experiment for now
+        # Fetch/calculate experiment parameters
+        n_step = ex.fp_n_step
+        sf = n_step.sf
+        cam_ref_dists = [0.5 for c in cameras] # Set to 1 metre for now
+        cam_proj_dists = [(c.get_pos() - projector.get_pos()).length for c in cameras]
+        
         test = FringeProjection(cameras, projector)
         experiment = NStepFPExperiment(test)
         
         experiment.add_pre_ref_callback(lambda: hide_objects(True))
         experiment.add_post_ref_callback(lambda: hide_objects(False))
         
-        experiment.run()
-        heightmap = experiment.profilometry()
+        ref_imgs, imgs = experiment.run()
+    
+        heightmaps = experiment.classic_ph(ref_imgs, imgs, sf, cam_ref_dists, cam_proj_dists)
+
+        for i, heightmap in enumerate(heightmaps):
+            h_name = f'FPNStep_{cameras[i].name}_heightmap'
+            h_mesh = self.heightmap_to_mesh(heightmap, h_name)
+            
+            h_obj = bpy.data.objects.new(h_name, h_mesh)
+            bpy.context.collection.objects.link(h_obj)
+            
+            # Add mesh to environment
         
-        # Do something with the processed images
+        # TODO: Revert properties to original settings before running experiment 
+        
         return {'FINISHED'}
+    
+    def heightmap_to_mesh(self, heightmap, name="Heightmap"):
+        height, width = heightmap.shape
+        
+        x_inc = 1.0 / (width - 1)
+        y_inc = 1.0 / (height - 1)
+        
+        # Make main mesh object
+        verts = []
+        faces = []
+        edges = []
+        
+        for i in range(height):
+            for j in range(width):
+                x = j * x_inc
+                y = i * y_inc
+                z = heightmap[i][j]
+                verts.append(Vector((x, y, z)))
+        
+        for i in range(height - 1):
+            for j in range(width - 1):
+                faces.append([i * width + j, i * width + j + 1, (i + 1) * width + j])
+                faces.append([i * width + j + 1, (i + 1) * width + j, (i + 1) * width + j + 1])
+
+        mesh = bpy.data.meshes.new(name=name)
+        mesh.from_pydata(verts, edges, faces)
+        mesh.update()
+        
+        return mesh
 
 
 classes = [

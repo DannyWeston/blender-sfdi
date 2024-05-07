@@ -24,6 +24,9 @@ class PG_Projector(bpy.types.PropertyGroup):
             ("OP2", "Binary",       "TODO: Fill tooltip", 2),
         ]
     )
+    
+class PG_FPNStep(bpy.types.PropertyGroup):
+    sf: bpy.props.FloatProperty(name="Spatial Frequency", default=0.0, min=0.0) # Stripe width
 
 class PG_Experiment(bpy.types.PropertyGroup):
     objects: bpy.props.CollectionProperty(type=PG_Object)
@@ -32,10 +35,15 @@ class PG_Experiment(bpy.types.PropertyGroup):
     phase_count: bpy.props.IntProperty(name="Phase Count", default=3, min=3, max=32)
     
     runs: bpy.props.IntProperty(name="Runs", default=1, min=1)
+    
+    fp_n_step: bpy.props.PointerProperty(type=PG_FPNStep)
 
 classes = [
     PG_Object,
     PG_Projector,
+    
+    PG_FPNStep,
+    
     PG_Experiment,
 ]
 
