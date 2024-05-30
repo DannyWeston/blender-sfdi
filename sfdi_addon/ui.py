@@ -1,8 +1,10 @@
 import bpy
 
+from bpy.types import UIList, Panel
+
 from sfdi_addon.operators import OP_RegisterProj, OP_UnregisterProj, OP_RegisterCamera, OP_UnregisterCamera, OP_RegisterObject, OP_UnregisterObject, OP_FPNStep
 
-class UL_RegisteredProjectors(bpy.types.UIList):
+class UL_RegisteredProjectors(UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
         row = layout.row()
         
@@ -16,22 +18,7 @@ class UL_RegisteredProjectors(bpy.types.UIList):
             layout.alignment = 'CENTER'
             layout.label(text="", icon_value=icon)
 
-class UL_RegisteredCameras(bpy.types.UIList):
-    def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
-        row = layout.row()
-        
-        # draw_item must handle the three layout types... Usually 'DEFAULT' and 'COMPACT' can share the same code.
-        if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            if item and item.obj:
-                row.prop(item.obj, "name", text="", emboss=False)
-            else:
-                layout.label(text="", translate=False)
-        # 'GRID' layout type should be as compact as possible (typically a single icon!).
-        elif self.layout_type == 'GRID':
-            layout.alignment = 'CENTER'
-            layout.label(text="", icon_value=icon)
-
-class UL_RegisteredObjects(bpy.types.UIList):
+class UL_RegisteredCameras(UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
         row = layout.row()
         
@@ -46,7 +33,22 @@ class UL_RegisteredObjects(bpy.types.UIList):
             layout.alignment = 'CENTER'
             layout.label(text="", icon_value=icon)
 
-class PT_ProjMenu(bpy.types.Panel):
+class UL_RegisteredObjects(UIList):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
+        row = layout.row()
+        
+        # draw_item must handle the three layout types... Usually 'DEFAULT' and 'COMPACT' can share the same code.
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            if item and item.obj:
+                row.prop(item.obj, "name", text="", emboss=False)
+            else:
+                layout.label(text="", translate=False)
+        # 'GRID' layout type should be as compact as possible (typically a single icon!).
+        elif self.layout_type == 'GRID':
+            layout.alignment = 'CENTER'
+            layout.label(text="", icon_value=icon)
+
+class PT_ProjMenu(Panel):
     bl_idname = "pt.proj_menu"
     bl_label = "Fringe Properties"
 
@@ -73,7 +75,7 @@ class PT_ProjMenu(bpy.types.Panel):
         grid.prop(proj_settings, "width")
         grid.prop(proj_settings, "height")
 
-class PT_SFDI_Selection(bpy.types.Panel):
+class PT_SFDI_Selection(Panel):
     bl_category = "SFDI"
     bl_label = "Selected"
     
@@ -109,7 +111,7 @@ class PT_SFDI_Selection(bpy.types.Panel):
         grid.operator(OP_RegisterObject.bl_idname, text="Add Object")
         grid.operator(OP_UnregisterObject.bl_idname, text="Remove Object")
 
-class PT_SFDI_NStepFP(bpy.types.Panel):
+class PT_SFDI_NStepFP(Panel):
     bl_category = "SFDI"
     bl_label = "Fringe Projection: N-Step"
     

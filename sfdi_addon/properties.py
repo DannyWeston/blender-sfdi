@@ -1,7 +1,5 @@
 import bpy
 
-from math import pi
-
 class PG_Object(bpy.types.PropertyGroup):
     obj: bpy.props.PointerProperty(type=bpy.types.Object)
 

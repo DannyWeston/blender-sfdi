@@ -7,20 +7,37 @@ from sfdi.io.std import stdout_redirected
 
 from mathutils import Vector
 
-def render_with_gpu(value):
-    logger = logging.getLogger("sfdi")
+def heightmap_to_mesh(heightmap, name="Heightmap"):
+    height, width = heightmap.shape
     
-    if value:
-        # Set the device and feature set
-        bpy.context.scene.cycles.device = "GPU"
-        
-        bpy.context.preferences.addons["cycles"].preferences.compute_device_type = "CUDA"
-        bpy.context.preferences.addons["cycles"].preferences.get_devices()
-        
-        logger.info("Using GPU to render images with Blender")
-        
-        # for d in bpy.context.preferences.addons["cycles"].preferences.devices:
-        #     d["use"] = 1 # Using all devices, include GPU and CPU
+    x_inc = 1.0 / (width - 1)
+    y_inc = 1.0 / (height - 1)
+    
+    # Make main mesh object
+    verts = []
+    faces = []
+    edges = []
+    
+    for i in range(height):
+        for j in range(width):
+            x = j * x_inc
+            y = i * y_inc
+            z = heightmap[i][j]
+            verts.append(Vector((x, y, z)))
+    
+    for i in range(height - 1):
+        for j in range(width - 1):
+            faces.append([i * width + j, i * width + j + 1, (i + 1) * width + j])
+            faces.append([i * width + j + 1, (i + 1) * width + j, (i + 1) * width + j + 1])
+
+    mesh = bpy.data.meshes.new(name=name)
+    mesh.from_pydata(verts, edges, faces)
+    mesh.update()
+    
+    return mesh
+
+def mesh_to_heightmap(mesh):
+    pass
 
 class BlenderGammaCalibration(GammaCalibration):
     def __init__(self, camera, projector, delta, crop_size=0.25, order=5, intensity_count=32):

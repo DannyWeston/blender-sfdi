@@ -167,8 +167,8 @@ def make_pixelate_map_group():
     test_group.links.new(snap.outputs[0], group_outputs.inputs['Vector'])
 
 class BL_FringeProjector(FringeProjector):
-    def __init__(self, name, phase_count, frequency, orientation, resolution):
-        super().__init__(name, phase_count, frequency, orientation, resolution)
+    def __init__(self, name, frequency, orientation, resolution, phases=[]):
+        super().__init__(name, frequency, orientation, resolution, phases)
         
         self.light_obj = bpy.data.objects[name]
         self.settings = self.light_obj.ProjectorSettings
@@ -179,7 +179,7 @@ class BL_FringeProjector(FringeProjector):
         self.logger.debug("Projecting image")
         
         # Set the phase angle in ProjectorSettings for next image
-        self.settings.phase = (2.0 * pi * self.current) / self.phase_count
+        self.settings.phase = self.get_phase()
         
         # Set the projector image to img
         # b_image = bpy.data.images.new("ProjectionImage", width=img.shape[0], height=img.shape[1])
@@ -202,7 +202,7 @@ class BL_Camera(Camera):
         
         self.samples = samples
         
-        # Set the number of samples
+        # Set the number of samples for the active scene
         bpy.data.scenes[0].cycles.samples = samples
 
     def capture(self):
