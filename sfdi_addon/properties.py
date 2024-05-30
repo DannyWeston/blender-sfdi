@@ -99,8 +99,6 @@ def register():
 def unregister():
     for cls in classes:
         bpy.utils.unregister_class(cls)
-        
-    bpy.app.handlers.depsgraph_update_post.remove(check_collections_update)
     
     del bpy.types.Scene.ExProperties
     

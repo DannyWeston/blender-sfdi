@@ -1,9 +1,8 @@
 import bpy
 import sfdi
-
 import os
 
-from sfdi_addon import operators, ui, properties
+from . import operator, ui, properties, blender, video
 
 bl_info = {
     "name": "Fringe Projection",
@@ -16,14 +15,14 @@ bl_info = {
 
 if "bpy" in locals():
     import importlib
+    if "sfdi" in locals(): importlib.reload(sfdi)
     
-    if "operators" in locals(): importlib.reload(operators)
+    if "operator" in locals(): importlib.reload(operator)
     if "ui" in locals(): importlib.reload(ui)
+    
+    if "blender" in locals(): importlib.reload(blender)
     if "properties" in locals(): importlib.reload(properties)
     if "video" in locals(): importlib.reload(video)
-    if "experiment" in locals(): importlib.reload(experiment)
-    if "blender" in locals(): importlib.reload(blender)
-    if "sfdi" in locals(): importlib.reload(sfdi)
 
 def get_addon_dir():
     import addon_utils
@@ -40,13 +39,13 @@ def register():
     print(f"SFDI ROOT_DIR set as {sfdi.definitions.ROOT_DIR}")
         
     properties.register()
-    operators.register()
+    operator.register()
     ui.register()
 
 def unregister():
     properties.unregister()
-    operators.unregister()
+    operator.unregister()
     ui.unregister()
-    
+
 if __name__ == "__main__":
     register()
