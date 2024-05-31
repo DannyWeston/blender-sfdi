@@ -22,6 +22,11 @@ class PG_Projector(bpy.types.PropertyGroup):
             ("OP2", "Binary",       "TODO: Fill tooltip", 2),
         ]
     )
+
+class PG_Checkerboard(bpy.types.PropertyGroup):
+    # Checkerboard square counts
+    width: bpy.props.FloatProperty(name="Width", default=6.0)
+    height: bpy.props.FloatProperty(name="Height", default=8.0)
     
 class PG_FPNStep(bpy.types.PropertyGroup):
     sf: bpy.props.FloatProperty(name="Spatial Frequency", default=0.0, min=0.0) # Stripe width
@@ -39,6 +44,7 @@ class PG_Experiment(bpy.types.PropertyGroup):
 classes = [
     PG_Object,
     PG_Projector,
+    PG_Checkerboard,
     
     PG_FPNStep,
     
@@ -95,6 +101,7 @@ def register():
     bpy.types.Scene.ExCamerasIndex = bpy.props.IntProperty(name="ExCamerasIndex")
     
     bpy.types.Object.ProjectorSettings = bpy.props.PointerProperty(type=PG_Projector)
+    bpy.types.Object.CheckerboardSettings = bpy.props.PointerProperty(type=PG_Checkerboard)
 
 def unregister():
     for cls in classes:
@@ -109,3 +116,4 @@ def unregister():
     del bpy.types.Scene.ExCamerasIndex
     
     del bpy.types.Object.ProjectorSettings
+    del bpy.types.Object.CheckerboardSettings
