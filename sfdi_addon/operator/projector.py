@@ -6,7 +6,7 @@ from sfdi_addon.video import ProjectorFactory
 class OP_RegisterProj(Operator):
     bl_idname = "op.register_proj"
     bl_label = "TODO: Write label"
-    
+
     @classmethod
     def poll(cls, context):
         projs = context.scene.ExProjectors
