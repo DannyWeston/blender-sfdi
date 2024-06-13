@@ -7,6 +7,19 @@ from sfdi.io.std import stdout_redirected
 
 from mathutils import Vector
 
+def add_driver(source, target, prop, dataPath, index = -1, func = ''):
+    ''' Add driver to source prop (at index), driven by target dataPath '''
+
+    if index != -1: d = source.driver_add(prop, index).driver
+    else: d = source.driver_add(prop).driver
+
+    v = d.variables.new()
+    v.name = prop
+    v.targets[0].id = target
+    v.targets[0].data_path = dataPath
+
+    d.expression = func + "(" + v.name + ")" if func else v.name
+
 def heightmap_to_mesh(heightmap, name="Heightmap"):
     height, width = heightmap.shape
     

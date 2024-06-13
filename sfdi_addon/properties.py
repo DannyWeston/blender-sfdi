@@ -1,30 +1,10 @@
 import bpy
+from bpy.app.handlers import persistent
 
 class PG_Object(bpy.types.PropertyGroup):
     obj: bpy.props.PointerProperty(type=bpy.types.Object)
 
-class PG_Projector(bpy.types.PropertyGroup):
-    frequency: bpy.props.FloatProperty(name="Frequency", default=32.0, min=0.0)
-    
-    phase: bpy.props.FloatProperty(name="Phase", default=0.0, min=0.0, unit='ROTATION')
-    
-    rotation: bpy.props.FloatProperty(name="Rotation", default=0.0, unit='ROTATION')
-    
-    # Projector resolution
-    width: bpy.props.IntProperty(name="Width", default=1024, min=1)
-    height: bpy.props.IntProperty(name="Height", default=768, min=1)
-    
-    fringe_type: bpy.props.EnumProperty(
-        name="Type",
-        description="TODO: Some description",
-        items=[
-            ("OP1", "Sinusoidal",   "TODO: Fill tooltip", 1),
-            ("OP2", "Binary",       "TODO: Fill tooltip", 2),
-        ]
-    )
-
 class PG_Checkerboard(bpy.types.PropertyGroup):
-    # Checkerboard square counts
     width: bpy.props.FloatProperty(name="Width", default=6.0)
     height: bpy.props.FloatProperty(name="Height", default=8.0)
     
@@ -43,15 +23,15 @@ class PG_Experiment(bpy.types.PropertyGroup):
 
 classes = [
     PG_Object,
-    PG_Projector,
     PG_Checkerboard,
     
     PG_FPNStep,
-    
+
     PG_Experiment,
 ]
 
-def check_collections_update(scene):
+@persistent
+def check_collections_update(scene, depsgraph):
     projectors = bpy.context.scene.ExProjectors
     cameras = bpy.context.scene.ExCameras
     objs = bpy.context.scene.ExProperties.objects
@@ -89,18 +69,17 @@ def check_collections_update(scene):
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
-        
+
     bpy.app.handlers.depsgraph_update_post.append(check_collections_update)
     
     bpy.types.Scene.ExProperties = bpy.props.PointerProperty(type=PG_Experiment)
-        
+
     bpy.types.Scene.ExProjectors = bpy.props.CollectionProperty(type=PG_Object)
     bpy.types.Scene.ExProjectorsIndex = bpy.props.IntProperty(name="ExProjectorsIndex")
     
     bpy.types.Scene.ExCameras = bpy.props.CollectionProperty(type=PG_Object)
     bpy.types.Scene.ExCamerasIndex = bpy.props.IntProperty(name="ExCamerasIndex")
     
-    bpy.types.Object.ProjectorSettings = bpy.props.PointerProperty(type=PG_Projector)
     bpy.types.Object.CheckerboardSettings = bpy.props.PointerProperty(type=PG_Checkerboard)
 
 def unregister():

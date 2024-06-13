@@ -6,16 +6,12 @@ from sfdi_addon.video import BL_FringeProjector, BL_Camera
 from sfdi_addon.operator.object import hide_objects
 
 from sfdi.experiment import NStepFPExperiment, FringeProjection
+from sfdi import display_image
 
 from math import pi
 
-def make_bl_projector(bl_proj, phases):
-    settings = bl_proj.ProjectorSettings
-    return BL_FringeProjector(name=bl_proj.name,
-                                frequency=settings.frequency, 
-                                orientation=settings.rotation,
-                                resolution=(settings.width, settings.height),
-                                phases=phases)
+def equal_phases(count):
+    return [2.0 * pi * (i / count) for i in range(count)]
 
 class OP_FPNStep(Operator):
     bl_idname = "op.run_experiment"
@@ -33,8 +29,8 @@ class OP_FPNStep(Operator):
             return {'CANCELLED'}
 
         ex = context.scene.ExProperties
-        phases = [2.0 * pi * (i / ex.phase_count) for i in range(ex.phase_count)]
-        projector = make_bl_projector(bl_projectors[0].obj, phases=phases)
+        projector = BL_FringeProjector.from_proj_obj(bl_projectors[0].obj)
+        projector.set_phases(equal_phases(ex.phase_count), True)
 
         # Setup cameras
         bl_cameras = context.scene.ExCameras
@@ -57,17 +53,21 @@ class OP_FPNStep(Operator):
         experiment.add_post_ref_callback(lambda: hide_objects(False))
         
         ref_imgs, imgs = experiment.run()
+        
+        for cam in imgs:
+            for img in cam:
+                display_image(img)
 
         # Save to disk
     
         heightmaps = experiment.classic_ph(ref_imgs, imgs, sf, cam_ref_dists, cam_proj_dists)
 
         for i, heightmap in enumerate(heightmaps):
-            masked = self.mask_heightmap(heightmap)
+            #masked = self.mask_heightmap(heightmap)
 
             # Convert the heightmap to a blender mesh/object
             h_name = f'FPNStep_{cameras[i].name}_heightmap'
-            h_mesh = heightmap_to_mesh(masked, h_name)
+            h_mesh = heightmap_to_mesh(heightmap, h_name)
             
             h_obj = bpy.data.objects.new(h_name, h_mesh)
             bpy.context.collection.objects.link(h_obj)

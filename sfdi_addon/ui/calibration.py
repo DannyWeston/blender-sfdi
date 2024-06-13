@@ -1,14 +1,37 @@
 import bpy
-from bpy.types import Operator
+from bpy.types import Panel, UIList
 
-class OP_AddCheckerboard(Operator):
-    bl_idname = "op.add_checkerboard"
-    bl_label = "Checkerboard"
+class PT_CheckerboardMenu(Panel):
+    bl_idname = "pt.checkerboard_menu"
+    bl_label = "Checkerboard Properties"
 
-    def execute(self, context):
-        # Add the stuff
+    bl_space_type = "PROPERTIES"
+    bl_region_type = "WINDOW"
+    bl_context = "data"
+
+    @classmethod
+    def poll(cls, context):
+        return context.object.data and context.object.data.name in bpy.data.lights
+
+    def draw(self, context):
+        settings = context.object.CheckerboardSettings
         
-        return {'FINISHED'}
+        box = self.layout.box()
 
-    def invoke(self, context, event):
-        return context.window_manager.invoke_props_dialog(self)
+        grid = box.grid_flow(columns=2, align=True)
+        grid.prop(proj_settings, "width")
+        grid.prop(proj_settings, "height")
+        
+
+classes = [
+    PT_ProjMenu,
+    UL_RegisteredProjectors
+]
+
+def register():
+    for cls in classes:
+        bpy.utils.register_class(cls)
+
+def unregister():
+    for cls in classes:
+        bpy.utils.unregister_class(cls)

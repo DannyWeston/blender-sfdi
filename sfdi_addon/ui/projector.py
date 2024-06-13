@@ -1,7 +1,7 @@
 import bpy
 from bpy.types import Panel, UIList
 
-class PT_ProjMenu(Panel):
+""" class PT_ProjMenu(Panel):
     bl_idname = "pt.proj_menu"
     bl_label = "Fringe Properties"
 
@@ -11,26 +11,28 @@ class PT_ProjMenu(Panel):
 
     @classmethod
     def poll(cls, context):
-        return context.object.data and context.object.data.name in bpy.data.lights
+        return context.object.data and ("IsProjector" in context.object.data) and context.object.data.name in bpy.data.lights
 
     def draw(self, context):
-        proj_settings = context.object.ProjectorSettings
+        temp = context.object.data
         
         box = self.layout.box()
         
         box.row(align=True)
-        box.prop(proj_settings, "fringe_type")
+        box.prop(temp["Fringe Type"], "fringe_type")
         box.prop(proj_settings, "frequency")
         box.prop(proj_settings, "phase")
         box.prop(proj_settings, "rotation")
 
         grid = box.grid_flow(columns=2, align=True)
         grid.prop(proj_settings, "width")
-        grid.prop(proj_settings, "height")
-        
+        grid.prop(proj_settings, "height") """
+
 class UL_RegisteredProjectors(UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
         row = layout.row()
+        
+        if item is None: return
         
         # draw_item must handle the three layout types... Usually 'DEFAULT' and 'COMPACT' can share the same code.
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
@@ -43,7 +45,7 @@ class UL_RegisteredProjectors(UIList):
             layout.label(text="", icon_value=icon)
 
 classes = [
-    PT_ProjMenu,
+    #PT_ProjMenu,
     UL_RegisteredProjectors
 ]
 

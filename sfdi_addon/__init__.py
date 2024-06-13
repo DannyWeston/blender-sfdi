@@ -2,7 +2,7 @@ import bpy
 import sfdi
 import os
 
-from . import operator, ui, properties, blender, video
+from . import operator, ui, properties, blender, video, materials
 
 bl_info = {
     "name": "Fringe Projection",
@@ -23,6 +23,7 @@ if "bpy" in locals():
     if "blender" in locals(): importlib.reload(blender)
     if "properties" in locals(): importlib.reload(properties)
     if "video" in locals(): importlib.reload(video)
+    if "materials" in locals(): importlib.reload(materials)
 
 def get_addon_dir():
     import addon_utils
