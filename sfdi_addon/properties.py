@@ -3,10 +3,6 @@ from bpy.app.handlers import persistent
 
 class PG_Object(bpy.types.PropertyGroup):
     obj: bpy.props.PointerProperty(type=bpy.types.Object)
-
-class PG_Checkerboard(bpy.types.PropertyGroup):
-    width: bpy.props.FloatProperty(name="Width", default=6.0)
-    height: bpy.props.FloatProperty(name="Height", default=8.0)
     
 class PG_FPNStep(bpy.types.PropertyGroup):
     sf: bpy.props.FloatProperty(name="Spatial Frequency", default=0.0, min=0.0) # Stripe width
@@ -23,10 +19,7 @@ class PG_Experiment(bpy.types.PropertyGroup):
 
 classes = [
     PG_Object,
-    PG_Checkerboard,
-    
     PG_FPNStep,
-
     PG_Experiment,
 ]
 
@@ -79,8 +72,6 @@ def register():
     
     bpy.types.Scene.ExCameras = bpy.props.CollectionProperty(type=PG_Object)
     bpy.types.Scene.ExCamerasIndex = bpy.props.IntProperty(name="ExCamerasIndex")
-    
-    bpy.types.Object.CheckerboardSettings = bpy.props.PointerProperty(type=PG_Checkerboard)
 
 def unregister():
     for cls in classes:
@@ -93,6 +84,3 @@ def unregister():
     
     del bpy.types.Scene.ExCameras
     del bpy.types.Scene.ExCamerasIndex
-    
-    del bpy.types.Object.ProjectorSettings
-    del bpy.types.Object.CheckerboardSettings
