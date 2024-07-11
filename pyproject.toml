@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "blender-sfdi"
+version = "0.1.0"
+description = ""
+authors = ["Daniel Weston <psydw2@nottingham.ac.uk>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "~3.11.0"
+bpy = "^4.1.0"
+matplotlib = "^3.9.1"
+pillow = "^10.4.0"
+scikit-learn = "^1.5.1"
+scipy = "^1.14.0"
+tk = "^0.1.0"
+opencv-python = "^4.10.0.84"
+imageio = "^2.34.2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

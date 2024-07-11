@@ -1,9 +1,9 @@
 import bpy
 from bpy.types import Operator
 
-from sfdi_addon.blender import heightmap_to_mesh
-from sfdi_addon.video import BL_FringeProjector, BL_Camera
-from sfdi_addon.operator.object import hide_objects
+from blender_sfdi.blender import heightmap_to_mesh
+from blender_sfdi.video import BL_FringeProjector, BL_Camera
+from blender_sfdi.operator.object import hide_objects
 
 from sfdi.experiment import NStepFPExperiment, FringeProjection
 from sfdi import display_image

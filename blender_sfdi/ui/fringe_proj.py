@@ -2,10 +2,10 @@
 import bpy
 from bpy.types import Panel
 
-from sfdi_addon.operator.fringe_proj import OP_FPNStep
-from sfdi_addon.operator.projector import OP_RegisterProj, OP_UnregisterProj
-from sfdi_addon.operator.camera import OP_RegisterCamera, OP_UnregisterCamera
-from sfdi_addon.operator.object import OP_RegisterObject, OP_UnregisterObject
+from blender_sfdi.operator.fringe_proj import OP_FPNStep
+from blender_sfdi.operator.projector import OP_RegisterProj, OP_UnregisterProj
+from blender_sfdi.operator.camera import OP_RegisterCamera, OP_UnregisterCamera
+from blender_sfdi.operator.object import OP_RegisterObject, OP_UnregisterObject
 
 class PT_SFDI_NStepFP(Panel):
     bl_category = "SFDI"

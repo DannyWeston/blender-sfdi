@@ -2,8 +2,8 @@ import bpy
 from bpy.types import Operator
 from mathutils import Vector
 
-from sfdi_addon.blender import add_driver
-from sfdi_addon.materials import make_fringe_intensity_map_group, make_pixelate_map_group
+from blender_sfdi.blender import add_driver
+from blender_sfdi.materials import make_fringe_intensity_map_group, make_pixelate_map_group
 
 class OP_RegisterProj(Operator):
     bl_idname = "op.register_proj"

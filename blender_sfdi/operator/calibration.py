@@ -3,7 +3,7 @@ import bpy
 from bpy.types import Operator
 from mathutils import Vector
 
-from sfdi_addon.blender import add_driver
+from blender_sfdi.blender import add_driver
 
 def get_cb_pattern_mat():
     cb_name = "CheckerboardPattern"

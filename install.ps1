@@ -1,31 +1,31 @@
+# Environment variables
+
 $version = "3.6"
 
-$venv = ".venv\"
+$portable = "Blender\portable"
 
-$python = ("Blender\" + $version + "\python")
-
-
-
-echo "Setting up virtual environment"
-
-# Activate venv
-& ($venv + "\Scripts\activate.ps1")
+$python = ("Blender\" + $version + "\python\bin\python.exe")
 
 
 
-echo "Replacing python path"
+# Create portable folder 
 
-# Rename python dir to stop Blender from using it
-if (Test-Path $python){
-	Rename-Item -Path $python -NewName "_python"
-}
+echo "Creating portable folder..."
 
+New-Item -ItemType Directory -Force -Path $portable | Out-Null
 
 
-echo "Installing addon"
 
-# Install addon to correct directory
-& .\update.ps1
+# Setup virtual environment
 
-# Finished!
-echo "Finished"
+echo "Installing necessary python packages..."
+
+& $python "-m" "pip" "install" "-r" "requirements.txt"
+
+
+
+# Check for updates
+
+# & .\update.ps1
+
+echo "Installation finished!"

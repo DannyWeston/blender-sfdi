@@ -7,12 +7,11 @@
 import numpy as np
 
 import sfdi
-
 from sfdi.services import CalibrationService
 
-from app.blender import BlenderCameraCalibration, BlenderGammaCalibration, load_scene, render_with_gpu
-from app.video import BlenderCamera, BlenderProjector
-from app.args import handle_args
+from blender_sfdi.blender import BlenderCameraCalibration, BlenderGammaCalibration, load_scene, render_with_gpu
+from blender_sfdi.video import BlenderCamera, BlenderProjector
+from blender_sfdi.args import handle_args
 
 # Last camera calibration results:
 def main():

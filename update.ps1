@@ -1,8 +1,6 @@
-$version = "3.6"
-
-$appdata = $env:APPDATA
-
 $addon = "sfdi_addon"
+
+$version = "3.6"
 
 $blender_addons = ("Blender\" + $version + "\scripts\addons\")
 
