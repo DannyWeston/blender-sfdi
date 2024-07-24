@@ -2,58 +2,24 @@
 
 ## Overview
 
-This repository consists of the source code for a hard-addon for Blender 3.6. 
+This repository consists of the source code for a extension for Blender 4.2. 
 
 In here you can add different camera and projector configurations for fringe projection (and eventually photogrammetry) and run simulations to generate near-real outputs (depending on your scene configuration).
 
-It is currently managed by Daniel Weston, University of Nottingham, Optics and Photonics. Any questions please contact by email (psydw2@nottingham.ac.uk). 
-
-### Workaround
-
-The reason why this is a hard-addon as it requires its own copy of Blender to install and it is strongly suggested not to do it on any main-install of Blender.
-
-This is because Blender does not currently provide a mechanism for using third-party pip packages with addons. To work around this, this addon provides Blender with its own virtual environment which contains Python with the pip packages installed.
-
-Eventually once Blender does provide this functionality, this addon will be updated to not be as "hacky".
+It is currently managed by Daniel Weston, University of Nottingham, Optics and Photonics. For any questions please contact by email (psydw2@nottingham.ac.uk). 
 
 ## Examples
 
 TODO: Add some examples
 
-## Installation
-
 ### Requirements
 
-For the installation of this addon you will need a few things. These are:
+For the installation of this addon you will need a Windows or Linux based operating system, and Blender version 4.2 which can be found [here](https://www.blender.org/download/release/Blender4.2/). All versions of the addon can be found [here](), and instructions to install local addons can be found on the [Blender website](https://docs.blender.org/manual/en/latest/editors/preferences/extensions.html#install).
 
-- Windows-based operating system
-- A copy of this repository
-- Blender 3.6 portable found [here](https://www.blender.org/download/release/Blender3.6/blender-3.6.11-windows-x64.zip)
+Version 4.2 is used because the extension makes use of third-party Python packages and this functionality is only available in version 4.2 or greater of Blender.
 
-### Steps
+This package has the dependency on my other repository which contains all of the underlying functionality for how SFDI works, and can be found [here](https://github.com/DannyWeston/sfdi).
 
-1. First download a copy of this repository into a place of your choice.
+If you wish to fork and compile your own version of the add-on, download the source code from this repository, and compile the extension using the CLI instruction found [here](https://docs.blender.org/manual/en/dev/advanced/extensions/command_line_arguments.html#subcommand-build). Note that if you use any other third-party packages in your fork of the addon you will need to add them to the "wheels" section in the "blender_manifest.toml" file.
 
-2. Extract the downloaded Blender version, it will output a folder. 
-
-3. Rename the extracted folder to "Blender".
-
-4. Place this directory into the root of your reopsitory copy.
-
-5. Run the "Install" shortcut in order to install the addon and its features.
-
-6. Run the "Blender" shortcut and the application should load successfully.
-
-Navigating to "Edit > Preferences > Addons" should now show you that the addon is installed and enabled.
-
-### Extending the codebase
-
-If you wish to install the codebase for the addon, you will need to use the "Update" shortcut in the repository root in order to tell Blender that you have updated the addon. This simply clears out the existing addon files, and replaces them with a copy of the new ones.
-
-If you have Blender open you will need to click the icon at the top right, then click "System > Reload Scripts". If you have no compilation errors then it should work fine, otherwise check the shell for any error messages, fix them in your software, and redo this process.
-
-### Notes
-
-Theoretically this should work on Linux, but you will need to tweak the installation script to work on Linux systems which shouldn't be too hard.
-
-You can use this addon with a non-portable version of Blender, but it is not recommended as the setup involves changing some of the Blender-specific setup and is non-reversible (i.e: to revert you will need to reinstall).
+It is recommended to use a portable version of Blender for development as it can become cumbersome for managing application preferences across different versions.

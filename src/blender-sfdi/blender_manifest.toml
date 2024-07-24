@@ -1,0 +1,41 @@
+schema_version = "1.0.0"
+
+id = "blender_sfdi"
+version = "0.0.1"
+name = "SFDI Addon"
+tagline = "Extension for Fringe Projection and Photogrammetry"
+maintainer = "Daniel Weston <psydw2@nottingham.ac.uk>"
+
+type = "add-on"
+platforms = ["windows-x64"]
+blender_version_min = "4.2.0"
+
+website = "https://github.com/DannyWeston/blender-sfdi"
+
+license = [
+  "SPDX:GPL-2.0-or-later",
+]
+
+wheels = [
+  "/../../wheels/sfdi-0.1.0-py3-none-any.whl"
+]
+
+[permissions]
+network =   "For doing w"
+files =     "For doing x"
+clipboard = "For doing y"
+camera =    "For doing z"
+
+# Optional: required by some licenses.
+# copyright = [
+#   "2002-2024 Developer Name",
+#   "1998 Company Name",
+# ]
+
+# Optional: build setting.
+# https://docs.blender.org/manual/en/dev/extensions/command_line_arguments.html#command-line-args-extension-build
+# [build]
+# paths_exclude_pattern = [
+#   "/.git/"
+#   "__pycache__/"
+# ]
