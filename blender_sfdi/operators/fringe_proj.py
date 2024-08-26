@@ -1,12 +1,12 @@
 import bpy
 from bpy.types import Operator
 
-from blender_sfdi.blender import heightmap_to_mesh
-from blender_sfdi.video import BL_FringeProjector, BL_Camera
-from blender_sfdi.operator.object import hide_objects
+from ..blender import heightmap_to_mesh
+from ..video import BL_FringeProjector, BL_Camera
+from .object import hide_objects
 
-from sfdi.experiment import NStepFPExperiment, FringeProjection
-from sfdi import display_image
+from opensfdi.experiment import NStepFPExperiment, FringeProjection
+from opensfdi import show_image
 
 from math import pi
 
@@ -56,7 +56,7 @@ class OP_FPNStep(Operator):
         
         for cam in imgs:
             for img in cam:
-                display_image(img)
+                show_image(img)
 
         # Save to disk
     

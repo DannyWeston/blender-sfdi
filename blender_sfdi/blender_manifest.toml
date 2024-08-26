@@ -1,0 +1,53 @@
+schema_version = "1.0.0"
+
+id = "blender_sfdi"
+version = "0.1.0"
+
+name = "blender_sfdi"
+tagline = "TODO: Add"
+
+maintainer = "Daniel Weston <psydw2@nottingham.ac.uk>"
+website = "https://github.com/DannyWeston/blender-sfdi"
+license = [
+  "SPDX:GPL-2.0-or-later",
+]
+
+type = "add-on"
+platforms = ["windows-x64"]
+blender_version_min = "4.2.0"
+
+wheels = [
+  # Shallow Dependencies
+  "wheels/opensfdi-0.1.2-py3-none-any.whl",
+  "wheels/bpy-4.2.0-cp311-cp311-win_amd64.whl",
+
+  # Deep dependencies
+  "wheels/contourpy-1.2.1-cp311-cp311-win_amd64.whl",
+  "wheels/cycler-0.12.1-py3-none-any.whl",
+  "wheels/fonttools-4.53.1-cp311-cp311-win_amd64.whl",
+  "wheels/imageio-2.34.2-py3-none-any.whl",
+  "wheels/joblib-1.4.2-py3-none-any.whl",
+  "wheels/kiwisolver-1.4.5-cp311-cp311-win_amd64.whl",
+  "wheels/lazy_loader-0.4-py3-none-any.whl",
+  "wheels/matplotlib-3.9.1.post1-cp311-cp311-win_amd64.whl",
+  "wheels/networkx-3.3-py3-none-any.whl",
+  "wheels/numpy-2.0.1-cp311-cp311-win_amd64.whl",
+  "wheels/opencv_python-4.10.0.84-cp37-abi3-win_amd64.whl",
+  "wheels/packaging-24.1-py3-none-any.whl",
+  "wheels/pillow-10.4.0-cp311-cp311-win_amd64.whl",
+  "wheels/pyparsing-3.1.2-py3-none-any.whl",
+  "wheels/python_dateutil-2.9.0.post0-py2.py3-none-any.whl",
+  "wheels/python_utils-3.8.2-py2.py3-none-any.whl",
+  "wheels/scikit_image-0.24.0-cp311-cp311-win_amd64.whl",
+  "wheels/scikit_learn-1.5.1-cp311-cp311-win_amd64.whl",
+  "wheels/scipy-1.14.0-cp311-cp311-win_amd64.whl",
+  "wheels/six-1.16.0-py2.py3-none-any.whl",
+  "wheels/threadpoolctl-3.5.0-py3-none-any.whl",
+  "wheels/tifffile-2024.7.24-py3-none-any.whl",
+  "wheels/typing_extensions-4.12.2-py3-none-any.whl",
+]
+
+[permissions]
+network = "For doing y"
+files = "For doing z"
+clipboard = "For doing x"

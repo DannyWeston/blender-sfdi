@@ -1,16 +1,28 @@
 import bpy
 from math import pi
 
+def proj_mesh_mat():
+    mat = bpy.data.materials.get("ProjectorMeshMat")
+    if mat is not None: return mat
+
+    # Doesn't exist so create
+    mat = bpy.data.materials.new(name="ProjectorMeshMat")
+    mat.use_nodes = True
+    nt = mat.node_tree
+
+    nt.nodes["Principled BSDF"].inputs[0].default_value = (0.25, 0.55, 1.0, 1.0)
+
+    return mat
+
 def make_pixelate_map_group():
     test_group = bpy.data.node_groups.new('Vector Pixelate', 'ShaderNodeTree')
     
-    
     group_inputs = test_group.nodes.new('NodeGroupInput')
     group_inputs.location = (0, 0)
-    test_group.inputs.new('NodeSocketVector','Vector')
-    test_group.inputs.new('NodeSocketInt','Width')
-    test_group.inputs.new('NodeSocketInt','Height')
-
+    
+    test_group.interface.new_socket('Vector', socket_type='NodeSocketVector', in_out='INPUT')
+    test_group.interface.new_socket('Width', socket_type='NodeSocketInt', in_out='INPUT')
+    test_group.interface.new_socket('Height', socket_type='NodeSocketInt', in_out='INPUT')
     
     # Define Intermediate Nodes
     
@@ -33,23 +45,23 @@ def make_pixelate_map_group():
     
     # Create NodeGroup outputs
 
-    group_outputs = test_group.nodes.new('NodeGroupOutput')
-    group_outputs.location = (800, 0)
-    
-    test_group.outputs.new('NodeSocketVector','Vector')
+    group_output = test_group.nodes.new('NodeGroupOutput')
+    group_output.location = (800, 0)
+
+    test_group.interface.new_socket('Vector', socket_type='NodeSocketVector', in_out='OUTPUT')
     
     # Link Nodes Together
     
-    test_group.links.new(group_inputs.outputs['Vector'], snap.inputs[0])
-    test_group.links.new(group_inputs.outputs['Width'], width_divide.inputs[1])
-    test_group.links.new(group_inputs.outputs['Height'], height_divide.inputs[1])
+    test_group.links.new(group_inputs.outputs[0], snap.inputs[0])
+    test_group.links.new(group_inputs.outputs[1], width_divide.inputs[1])
+    test_group.links.new(group_inputs.outputs[2], height_divide.inputs[1])
     
     test_group.links.new(width_divide.outputs[0], combine_xyz.inputs[0])
     test_group.links.new(height_divide.outputs[0], combine_xyz.inputs[1])
     
     test_group.links.new(combine_xyz.outputs[0], snap.inputs[1])
     
-    test_group.links.new(snap.outputs[0], group_outputs.inputs['Vector'])
+    test_group.links.new(snap.outputs[0], group_output.inputs[0])
 
 def make_fringe_intensity_map_group():
     test_group = bpy.data.node_groups.new('Fringe Intensity Map', 'ShaderNodeTree')
@@ -58,10 +70,11 @@ def make_fringe_intensity_map_group():
 
     group_inputs = test_group.nodes.new('NodeGroupInput')
     group_inputs.location = (-200, 0)
-    test_group.inputs.new('NodeSocketVector','Vector')
-    test_group.inputs.new('NodeSocketFloat','Rotation')
-    test_group.inputs.new('NodeSocketFloat','Frequency')
-    test_group.inputs.new('NodeSocketFloat','Phase')
+
+    test_group.interface.new_socket('Vector', socket_type='NodeSocketVector', in_out='INPUT')
+    test_group.interface.new_socket('Rotation', socket_type='NodeSocketFloat', in_out='INPUT')
+    test_group.interface.new_socket('Frequency', socket_type='NodeSocketFloat', in_out='INPUT')
+    test_group.interface.new_socket('Phase', socket_type='NodeSocketFloat', in_out='INPUT')
 
     # Create intermediate nodes
     
@@ -114,26 +127,27 @@ def make_fringe_intensity_map_group():
     # Create output nodes
     group_outputs = test_group.nodes.new('NodeGroupOutput')
     group_outputs.location = (1400, 0)
-    test_group.outputs.new('NodeSocketFloat','Intensity')
+    
+    test_group.interface.new_socket('Intensity', socket_type='NodeSocketFloat', in_out='OUTPUT')
 
     # Link Nodes Together
     
-    test_group.links.new(vector_rotate_0.inputs[0], group_inputs.outputs['Vector']) # Vector -> VectorRotate
-    test_group.links.new(vector_rotate_0.inputs[3], group_inputs.outputs['Rotation']) # Rotation -> VectorRotate
+    test_group.links.new(group_inputs.outputs[0], vector_rotate_0.inputs[0]) # Vector -> VectorRotate
+    test_group.links.new(group_inputs.outputs[1], vector_rotate_0.inputs[3]) # Rotation -> VectorRotate
+    test_group.links.new(vector_rotate_0.outputs[0], mapping_sep_1.inputs[0]) # VectorRotate -> SeparateXYZ
+
+    test_group.links.new(group_inputs.outputs[2], mult_node_1.inputs[1]) # Frequency -> Multiply 1 [1]
+
+    test_group.links.new(mapping_sep_1.outputs[1], mult_node_2.inputs[0]) # SeparateXYZ Y -> Multiply 2 [0]
+    test_group.links.new(mult_node_1.outputs[0], mult_node_2.inputs[1]) # Multiply 1 -> Multiply 2 [1]
+
+    test_group.links.new(mult_node_2.outputs[0], add_node_3.inputs[0]) # Multiply 2 -> Add 3 [0]
+    test_group.links.new(group_inputs.outputs[3], add_node_3.inputs[1]) # Phase -> Add 3 [1]
+
+    test_group.links.new(add_node_3.outputs[0], sin_node_4.inputs[0]) # Add 3 -> Sin [0]
+
+    test_group.links.new(sin_node_4.outputs[0], add_node_5.inputs[0]) # Sin -> Add 5 [0]
     
-    test_group.links.new(mapping_sep_1.inputs[0], vector_rotate_0.outputs[0]) # Vector Rotate -> SeparateXYZ
-    test_group.links.new(mult_node_1.inputs[1], group_inputs.outputs['Frequency']) # Frequency -> Multiply 1 [1]
+    test_group.links.new(add_node_5.outputs[0], divide_node_6.inputs[0]) # Add -> Divide 6 [0]
 
-    test_group.links.new(mult_node_2.inputs[0], mapping_sep_1.outputs[1]) # SeparateXYZ Y -> Multiply 2 [0]
-    test_group.links.new(mult_node_2.inputs[1], mult_node_1.outputs[0]) # Multiply 1 -> Multiply 2 [1]
-
-    test_group.links.new(add_node_3.inputs[0], mult_node_2.outputs[0]) # Multiply 2 -> Add 3 [0]
-    test_group.links.new(add_node_3.inputs[1], group_inputs.outputs['Phase']) # Phase -> Add 3 [1]
-
-    test_group.links.new(sin_node_4.inputs[0], add_node_3.outputs[0]) # Add 3 -> Sin [0]
-
-    test_group.links.new(add_node_5.inputs[0], sin_node_4.outputs[0]) # Sin -> Add 5 [0]
-    
-    test_group.links.new(divide_node_6.inputs[0], add_node_5.outputs[0]) # Add -> Divide 6 [0]
-
-    test_group.links.new(group_outputs.inputs["Intensity"], divide_node_6.outputs[0]) # Cos -> Add 4 [0]
+    test_group.links.new(divide_node_6.outputs[0], group_outputs.inputs["Intensity"]) # Cos -> Add 4 [0]

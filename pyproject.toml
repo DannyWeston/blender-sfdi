@@ -8,7 +8,8 @@ packages = [{include = "*", from="src"}]
 
 [tool.poetry.dependencies]
 python = "3.11.7"
-opensfdi = "^0.1.0"
+bpy = "4.2.0"
+opensfdi = "0.1.2"
 
 [build-system]
 requires = ["poetry-core"]

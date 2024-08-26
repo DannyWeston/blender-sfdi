@@ -1,4 +1,3 @@
-import bpy
 from . import camera, projector, object, calibration, fringe_proj
 
 def register():

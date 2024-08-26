@@ -1,9 +1,8 @@
 import bpy
-import logging
 
-from sfdi.experiment import Experiment
-from sfdi.calibration import CameraCalibration, GammaCalibration
-from sfdi.io.std import stdout_redirected
+from opensfdi.experiment import Experiment
+from opensfdi.calibration import CameraCalibration, GammaCalibration
+from opensfdi.io.std import stdout_redirected
 
 from mathutils import Vector
 

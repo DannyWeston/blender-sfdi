@@ -6,9 +6,9 @@ import os
 
 from time import perf_counter
 
-from sfdi.video import FringeProjector, Camera
-from sfdi.definitions import ROOT_DIR
-from sfdi.io.std import stdout_redirected
+from opensfdi.video import FringeProjector, Camera
+from opensfdi.definitions import ROOT_DIR
+from opensfdi.io.std import stdout_redirected
 
 class BL_FringeProjector(FringeProjector):
     def __init__(self, name, frequency, orientation, resolution, phases=[]):
