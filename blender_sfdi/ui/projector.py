@@ -18,7 +18,7 @@ class UL_RegisteredProjectors(UIList):
             layout.label(text="", icon_value=icon)
 
 class PROJECTOR_PT_Settings(Panel):
-    bl_category = "Projector"
+    bl_category = "SFDI"
     bl_label = 'Projector'
 
     bl_space_type = "VIEW_3D"

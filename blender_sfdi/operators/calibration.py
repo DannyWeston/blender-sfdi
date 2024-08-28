@@ -1,21 +1,27 @@
 import bpy
-
 from bpy.types import Operator
-from mathutils import Vector
+
+from opensfdi.io.std import stdout_redirected
 
 from ..blender import add_driver
+from ..definitions import MODELS_DIR
 
-def get_cb_pattern_mat():
-    cb_name = "CheckerboardPattern"
-    mat = bpy.data.materials.get(cb_name)
-    if mat: return mat 
+DEFAULT_CB_PATH =  str(MODELS_DIR / "checkerboard.obj")
+CB_SHADER_NAME = "CheckerboardGenerator"
+
+def get_cb_mat():
+    mat = bpy.data.materials.get(CB_SHADER_NAME)
     
-    mat = bpy.data.materials.new(name=cb_name)
+    if mat: return mat
+    
+    mat = bpy.data.materials.new(name=CB_SHADER_NAME)
 
     # Setup shader node for pattern part
     mat.use_nodes = True
     shader_nodes = mat.node_tree.nodes
     node_links = mat.node_tree.links
+
+    shader_nodes.remove(shader_nodes["Principled BSDF"])
 
     # Create shader
     tex_node = shader_nodes.new(type="ShaderNodeTexCoord")
@@ -42,77 +48,56 @@ def get_cb_pattern_mat():
 
     return mat
 
-def get_cb_mat():
-    cb_name = "Checkerboard"
-    mat = bpy.data.materials.get(cb_name)
-    if mat: return mat
-    
-    mat = bpy.data.materials.new(name=cb_name)
+def create_checkerboard(location, rotation):
+    # Load the checkerboard mesh from disk
+    with stdout_redirected():
+        bpy.ops.wm.obj_import(filepath=DEFAULT_CB_PATH, filter_obj=False, display_type='DEFAULT', forward_axis='NEGATIVE_Z', up_axis='Y')
 
-    # Setup shader node for pattern part
-    mat.use_nodes = True
-    # shader_nodes = mat.node_tree.nodes
-    # node_links = mat.node_tree.links
+    bl_obj = bpy.context.active_object
 
-    return mat
-
-def create_checkerboard(location, rotation, size):
-    # Make main mesh object
-    # verts = [[9, 1, 0], [10, 3, 1], [4, 2, 3], [11, 0, 2], [3, 0, 1], [6, 9, 5], [8, 10, 6], [7, 4, 8], [5, 11, 7], [9, 10, 1], [10, 4, 3], [4, 11, 2], [11, 9, 0], [3, 2, 0], [6, 10, 9], [8, 4, 10], [7, 11, 4], [5, 9, 11]]
-    verts = [Vector((-0.2199999988079071, -0.30699998140335083, -0.004999999888241291)), Vector((-0.2199999988079071, 0.30699998140335083, -0.004999999888241291)), Vector((0.2199999988079071, -0.30699998140335083, -0.004999999888241291)), Vector((0.2199999988079071, 0.30699998140335083, -0.004999999888241291)), Vector((0.2199999988079071, 0.30699998140335083, 0.004999999888241291)), Vector((-0.20999999344348907, -0.296999990940094, 0.004999999888241291)), Vector((-0.20999999344348907, 0.296999990940094, 0.004999999888241291)), Vector((0.20999999344348907, -0.296999990940094, 0.004999999888241291)), Vector((0.20999999344348907, 0.296999990940094, 0.004999999888241291)), Vector((-0.2199999988079071, -0.30699998140335083, 0.004999999888241291)), Vector((-0.2199999988079071, 0.30699998140335083, 0.004999999888241291)), Vector((0.2199999988079071, -0.30699998140335083, 0.004999999888241291))]
-    faces = [[9, 1, 0], [10, 3, 1], [4, 2, 3], [11, 0, 2], [3, 0, 1], [6, 9, 5], [8, 10, 6], [7, 4, 8], [5, 11, 7], [9, 10, 1], [10, 4, 3], [4, 11, 2], [11, 9, 0], [3, 2, 0], [6, 10, 9], [8, 4, 10], [7, 11, 4], [5, 9, 11]]
-    edges = []
-
-    chb_mesh = bpy.data.meshes.new(name="Checkerboard")
-    chb_mesh.from_pydata(verts, edges, faces)
-    chb_mesh.update()
-
-    # Add material to mesh
+    # Add generating pattern material to mesh
     mat = get_cb_mat()
-    chb_mesh.materials.append(mat)
-
-    # Make pattern mesh object
-    verts = [Vector((-0.20999999344348907, -0.2969996929168701, 0.004999999888241291)), Vector((-0.20999999344348907, 0.29700028896331787, 0.004999999888241291)), Vector((0.20999997854232788, -0.2969996929168701, 0.004999999888241291)), Vector((0.20999997854232788, 0.29700028896331787, 0.004999999888241291))]
-    faces = [[1, 2, 3], [1, 0, 2]]
-    edges = []
-
-    pattern_mesh = bpy.data.meshes.new(name="CheckerboardPattern")
-    pattern_mesh.from_pydata(verts, edges, faces)
-    pattern_mesh.update()
-
-    # Add material to mesh
-    mat = get_cb_pattern_mat()
-    pattern_mesh.materials.append(mat)
-
-    # TODO: Add width, height driver properties for checkerboard
-    # Needs menu panel
-    pattern_obj = bpy.data.objects.new('CheckerboardPattern', pattern_mesh)
-    cb_obj = bpy.data.objects.new('Checkerboard', chb_mesh)
+    if bl_obj.data.materials: bl_obj.data.materials[0] = mat
+    else: bl_obj.data.materials.append(mat)
 
     # Transform created object if any supplied
-    cb_obj.rotation_euler[0] = rotation[0]
-    cb_obj.rotation_euler[1] = rotation[1]
-    cb_obj.rotation_euler[2] = rotation[2]
+    bl_obj.rotation_euler[0] = rotation[0]
+    bl_obj.rotation_euler[1] = rotation[1]
+    bl_obj.rotation_euler[2] = rotation[2]
 
-    cb_obj.location[0] = location[0]
-    cb_obj.location[1] = location[1]
-    cb_obj.location[2] = location[2]
-
-    bpy.context.collection.objects.link(pattern_obj)
-    bpy.context.collection.objects.link(cb_obj)
-
-    # Set pattern mesh parent to main object
-    pattern_obj.parent = cb_obj
+    bl_obj.location[0] = location[0]
+    bl_obj.location[1] = location[1]
+    bl_obj.location[2] = location[2]
 
     # Setup property drivers for pattern width/height
-    cb_obj["IsCheckerboard"] = True
-    cb_obj["Size"] = size
-    
-    map_node = mat.node_tree.nodes["Mapping"]
-    add_driver(map_node.inputs[3], cb_obj, 'default_value', '["Size"][0]', 0)
-    add_driver(map_node.inputs[3], cb_obj, 'default_value', '["Size"][1]', 1)
+    bl_obj["IsCheckerboard"] = True
 
-    return cb_obj
+    # Add driver for changing the size of the checkerboard
+    map_node = mat.node_tree.nodes.get("Mapping")
+
+    add_driver(map_node.inputs[3], bl_obj, 'default_value', 'settings.size[0]', 0)
+    add_driver(map_node.inputs[3], bl_obj, 'default_value', 'settings.size[1]', 1)
+
+    return bl_obj
+
+class BL_Checkerboard:
+    def __init__(self, name, width, height):
+        self.__width = width
+        self.__height = height
+
+        # Retrieve object from Blender
+        self.__cb_obj = bpy.data.objects[name]
+            
+    def get_pos(self):
+        return self.__cb_obj.matrix_world.to_translation()
+
+    def get_bl_obj(self):
+        return self.__cb_obj
+
+    @staticmethod
+    def from_cb_obj(cb_obj):
+        settings = cb_obj.cb_settings
+        return BL_Checkerboard(name=cb_obj.name, width=settings.width, height=settings.height)
 
 class OP_AddCheckerboard(Operator):
     bl_idname = "menu.add_checkerboard"
@@ -120,15 +105,11 @@ class OP_AddCheckerboard(Operator):
 
     bl_options = {'REGISTER', 'UNDO'}
     
-    location: bpy.props.FloatVectorProperty(name="Location", default=(0.0, 0.0, 0.0), unit='LENGTH')
-    rotation: bpy.props.FloatVectorProperty(name="Rotation", default=(0.0, 0.0, 0.0), unit='ROTATION')
-    
-    # Checkerboard square counts
-    size: bpy.props.FloatVectorProperty(name="Size", default=(8.0, 6.0), size=2, min=0.0)
+    location: bpy.props.FloatVectorProperty(name="Location", default=(0.0, 0.0, 0.0), unit='LENGTH') # type: ignore
+    rotation: bpy.props.FloatVectorProperty(name="Rotation", default=(0.0, 0.0, 0.0), unit='ROTATION') # type: ignore
 
     def execute(self, context):
-        chb = create_checkerboard(self.location, self.rotation, self.size)
-
+        create_checkerboard(self.location, self.rotation)
         return {'FINISHED'}
 
 classes = [
@@ -139,7 +120,7 @@ def register():
     for cls in classes:
         bpy.utils.register_class(cls)
 
-    bpy.types.VIEW3D_MT_add.append(lambda self, context: self.layout.operator(OP_AddCheckerboard.bl_idname))
+    bpy.types.VIEW3D_MT_add.append(lambda self, _: self.layout.operator(OP_AddCheckerboard.bl_idname))
 
 def unregister():
     for cls in classes:

@@ -1,31 +1,31 @@
 import bpy
-from bpy.types import Panel, UIList
+from bpy.types import Panel
 
-class PT_CheckerboardMenu(Panel):
-    bl_idname = "pt.checkerboard_menu"
-    bl_label = "Checkerboard Properties"
+class CHECKERBOARD_PT_Settings(Panel):
+    bl_category = "SFDI"
+    bl_label = "Checkerboard"
+    
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
 
-    bl_space_type = "PROPERTIES"
-    bl_region_type = "WINDOW"
-    bl_context = "data"
-
-    @classmethod
-    def poll(cls, context):
-        return context.object.data and context.object.data.name in bpy.data.lights
+    # @classmethod
+    # def poll(cls, context):
+    #     return context.object.data and context.object.data.name in bpy.data.lights
 
     def draw(self, context):
-        settings = context.object.CheckerboardSettings
-        
-        box = self.layout.box()
+        selected = context.object
 
-        grid = box.grid_flow(columns=2, align=True)
-        grid.prop(proj_settings, "width")
-        grid.prop(proj_settings, "height")
-        
+        if not (selected and ("IsCheckerboard" in context.object.data)):
+            return
+
+        settings = selected.cb_settings
+
+        self.layout.label(text='Checkerboard Settings:')
+        box = self.layout.box()
+        box.prop(settings, "size")
 
 classes = [
-    PT_ProjMenu,
-    UL_RegisteredProjectors
+    CHECKERBOARD_PT_Settings
 ]
 
 def register():

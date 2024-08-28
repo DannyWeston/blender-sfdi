@@ -9,7 +9,7 @@ from ..operators.object import OP_RegisterObject, OP_UnregisterObject
 
 class PT_SFDI_NStepFP(Panel):
     bl_category = "SFDI"
-    bl_label = "Fringe Projection: N-Step"
+    bl_label = "Experiment"
     
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"

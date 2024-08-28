@@ -69,7 +69,6 @@ class OP_AddProj(Operator):
 class ProjectorFactory:
     @staticmethod
     def MakeBL_FringeProjector(location, rotation):
-
         # Create new light for the projector
         light_data = bpy.data.lights.new(name="ProjectorLight", type='SPOT')
         light_data.energy = 10              # 10 Watts
