@@ -8,7 +8,7 @@ from ..blender import add_driver
 from ..materials import make_fringe_intensity_map_group, make_pixelate_map_group
 from ..definitions import MODELS_DIR
 
-DEFAULT_PROJ_PATH = str(MODELS_DIR / "projector.obj")
+DEFAULT_PROJ_PATH = str(MODELS_DIR / "projector_mesh.obj")
 PROJ_MASK_NAME = "ProjectorDefaultMask"
 
 class OP_RegisterProj(Operator):
@@ -181,7 +181,7 @@ class ProjectorFactory:
 
         # Add a mesh to the light obj
         with stdout_redirected():
-            bpy.ops.wm.obj_import(filepath=DEFAULT_PROJ_PATH, filter_obj=False, display_type='DEFAULT', forward_axis='NEGATIVE_Z', up_axis='Y')
+            bpy.ops.wm.obj_import(filepath=DEFAULT_PROJ_PATH, filter_obj=False, display_type='DEFAULT', forward_axis='Y', up_axis='Z')
 
         active = bpy.context.active_object
         active.parent = light_obj
@@ -192,7 +192,6 @@ class ProjectorFactory:
         constraint.use_min_x = constraint.use_min_y = constraint.use_min_z = True
         constraint.min_x = constraint.min_y = constraint.min_z = 1.0
         
-
         constraint.use_max_x = constraint.use_max_y = constraint.use_max_z = True
         constraint.max_x = constraint.max_y = constraint.max_z = 1.0
         

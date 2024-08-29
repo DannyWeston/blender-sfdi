@@ -25,7 +25,7 @@ class PG_ProjSettings(bpy.types.PropertyGroup):
     resolution : bpy.props.IntVectorProperty(name="Resolution", size=2, default=(1024, 768), min=1) # type: ignore
 
 class PG_CheckerboardSettings(bpy.types.PropertyGroup):
-    size : bpy.props.IntVectorProperty(name="Size", size=2, default=(8, 6), min=1) # type: ignore
+    size : bpy.props.IntVectorProperty(name="Size", size=2, default=(6, 8), min=1) # type: ignore
 
 class PG_FPNStep(bpy.types.PropertyGroup):
     sf = bpy.props.FloatProperty(name="Spatial Frequency", default=0.0, min=0.0) # Stripe width

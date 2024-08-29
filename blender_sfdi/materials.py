@@ -1,6 +1,19 @@
 import bpy
 from math import pi
 
+def replace_material(bl_obj, target_name, new_mat, append_fallback=True):
+    if 0 <= (slot := bl_obj.material_slots.find(target_name)):
+        # Delete the placeholder material
+        temp = bl_obj.material_slots[slot].material
+        bpy.data.materials.remove(temp)
+        
+        # Assign new material
+        bl_obj.material_slots[slot].material = new_mat
+    
+    elif append_fallback:
+        print("Could not load checkerboard material slots correctly, falling back to just append")
+        bl_obj.data.materials.append(new_mat)
+
 def proj_mesh_mat():
     mat = bpy.data.materials.get("ProjectorMeshMat")
     if mat is not None: return mat

@@ -26,11 +26,11 @@ class OP_UnregisterObject(Operator):
     bl_idname = "op.unregister_object"
     bl_label = "TODO: Write label"
 
-    @classmethod
-    def poll(cls, context):
-        objs = context.scene.ExProperties.objects
+    # @classmethod
+    # def poll(cls, context):
+    #     objs = context.scene.ExProperties.objects
 
-        return context.object and (0 <= objs.find(context.object.name))
+    #     return context.object and (0 <= objs.find(context.object.name))
             
     def execute(self, context):
         objs = context.scene.ExProperties.objects
