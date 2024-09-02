@@ -20,9 +20,15 @@ class CHECKERBOARD_PT_Settings(Panel):
 
         settings = selected.cb_settings
 
-        self.layout.label(text='Checkerboard Settings:')
+        self.layout.label(text='Tile Grid Settings:')
         box = self.layout.box()
         box.prop(settings, "size")
+
+        self.layout.label(text='Position Settings:')
+        box = self.layout.box()
+        box.prop(settings, "seed")
+        box.prop(settings, "max_position")
+        box.prop(settings, "max_rotation")
 
 classes = [
     CHECKERBOARD_PT_Settings

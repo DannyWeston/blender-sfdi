@@ -8,8 +8,10 @@ from ..definitions import MODELS_DIR
 from ..materials import replace_material
 
 DEFAULT_CB_PATH =  str(MODELS_DIR / "checkerboard.obj")
+
 CB_SHADER_NAME = "CB_Generator"
 REPLACE_SLOT_NAME = "CB_Blank"
+POSITION_NODES_NAME = "PositionRandomiser"
 
 def get_cb_mat():
     # Check if already loaded in Blender
@@ -53,6 +55,90 @@ def get_cb_mat():
 
     return mat
 
+def make_pos_rand_mod():
+    # Don't make if already exists
+    if POSITION_NODES_NAME in bpy.data.node_groups:
+        return bpy.data.node_groups[POSITION_NODES_NAME]
+    
+    # Need to make it as doesn't exist
+    node_group = bpy.data.node_groups.new(POSITION_NODES_NAME, 'GeometryNodeTree')
+    
+    input_node = node_group.nodes.new('NodeGroupInput')
+    input_node.location = (0, 0)
+    
+    
+    scale_pos_node = node_group.nodes.new('ShaderNodeVectorMath')
+    scale_pos_node.location = (200, 200)
+    scale_pos_node.operation = 'SCALE'
+    scale_pos_node.inputs[3].default_value = -1.0
+    
+    scale_rot_node = node_group.nodes.new('ShaderNodeVectorMath')
+    scale_rot_node.location = (200, -200)
+    scale_rot_node.operation = 'SCALE'
+    scale_rot_node.inputs[3].default_value = -1.0
+    
+    
+    zero_node = node_group.nodes.new('FunctionNodeInputInt')
+    zero_node.location = (400, 0)
+    
+    
+    random_pos_node = node_group.nodes.new('FunctionNodeRandomValue')
+    random_pos_node.location = (600, 200)
+    random_pos_node.data_type = 'FLOAT_VECTOR'
+    
+    random_rot_node = node_group.nodes.new('FunctionNodeRandomValue')
+    random_rot_node.location = (600, -200)
+    random_rot_node.data_type = 'FLOAT_VECTOR'
+    
+    
+    transform_node = node_group.nodes.new('GeometryNodeTransform')
+    transform_node.location = (800, 0)
+
+
+    realise_node = node_group.nodes.new('GeometryNodeRealizeInstances')
+    realise_node.location = (1000, 0)
+    
+    
+    output_node = node_group.nodes.new('NodeGroupOutput')
+    output_node.location = (1200, 0)
+    
+    # Specify input and outputs of geometry nodes
+    
+    node_group.interface.new_socket(name="Geometry", in_out="INPUT", socket_type="NodeSocketGeometry")
+    node_group.interface.new_socket(name="Seed", in_out="INPUT", socket_type="NodeSocketInt")
+    node_group.interface.new_socket(name="Max Position", in_out="INPUT", socket_type="NodeSocketVector")
+    rot_socket = node_group.interface.new_socket(name="Max Rotation", in_out="INPUT", socket_type="NodeSocketVector")
+    rot_socket.subtype = 'EULER'
+    
+    node_group.interface.new_socket(name="Geometry", in_out="OUTPUT", socket_type="NodeSocketGeometry")
+    
+    # Setup links between nodes
+    
+    node_group.links.new(input_node.outputs['Geometry'], transform_node.inputs['Geometry'])
+    
+    node_group.links.new(input_node.outputs['Seed'], random_pos_node.inputs['Seed'])
+    node_group.links.new(input_node.outputs['Seed'], random_rot_node.inputs['Seed'])
+    
+    node_group.links.new(input_node.outputs['Max Position'], scale_pos_node.inputs['Vector'])
+    node_group.links.new(input_node.outputs['Max Rotation'], scale_rot_node.inputs['Vector'])
+    node_group.links.new(input_node.outputs['Max Position'], random_pos_node.inputs['Max'])
+    node_group.links.new(input_node.outputs['Max Rotation'], random_rot_node.inputs['Max'])
+    
+    node_group.links.new(scale_pos_node.outputs['Vector'], random_pos_node.inputs['Min'])
+    node_group.links.new(scale_rot_node.outputs['Vector'], random_rot_node.inputs['Min'])
+    
+    node_group.links.new(zero_node.outputs['Integer'], random_pos_node.inputs['ID'])
+    node_group.links.new(zero_node.outputs['Integer'], random_rot_node.inputs['ID'])
+    
+    node_group.links.new(random_pos_node.outputs['Value'], transform_node.inputs['Translation'])
+    node_group.links.new(random_rot_node.outputs['Value'], transform_node.inputs['Rotation'])
+    
+    node_group.links.new(transform_node.outputs['Geometry'], realise_node.inputs['Geometry'])
+    
+    node_group.links.new(realise_node.outputs['Geometry'], output_node.inputs['Geometry'])
+    
+    return node_group
+
 def create_checkerboard(location, rotation):
     # Load the checkerboard mesh from disk
     with stdout_redirected():
@@ -76,13 +162,20 @@ def create_checkerboard(location, rotation):
     # Setup property drivers for pattern width/height
     bl_obj.data["IsCheckerboard"] = True
 
-    # Setup generator material
+    # Add a position randomising node with driver for changing the seed, min/max pos and rot
+    pos_nodes = bl_obj.modifiers.new(POSITION_NODES_NAME, 'NODES')
+    pos_nodes.node_group = make_pos_rand_mod()
+
+    add_driver(pos_nodes, bl_obj, '["Socket_1"]', 'cb_settings.seed')
+    for i in range(3):
+        add_driver(pos_nodes, bl_obj, '["Socket_2"]', f'cb_settings.max_position[{i}]', i)
+        add_driver(pos_nodes, bl_obj, '["Socket_3"]', f'cb_settings.max_rotation[{i}]', i)
+
+    # Setup generator material with driver for changing the size of the checkerboard
     mat = get_cb_mat()
     replace_material(bl_obj, REPLACE_SLOT_NAME, mat)
 
-    # Add driver for changing the size of the checkerboard
     map_node = mat.node_tree.nodes["Mapping"]
-
     add_driver(map_node.inputs[3], bl_obj, 'default_value', 'cb_settings.size[0]', 0)
     add_driver(map_node.inputs[3], bl_obj, 'default_value', 'cb_settings.size[1]', 1)
 

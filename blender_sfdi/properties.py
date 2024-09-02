@@ -27,6 +27,12 @@ class PG_ProjSettings(bpy.types.PropertyGroup):
 class PG_CheckerboardSettings(bpy.types.PropertyGroup):
     size : bpy.props.IntVectorProperty(name="Size", size=2, default=(6, 8), min=1) # type: ignore
 
+    seed : bpy.props.IntProperty(name="Seed", default=0) # type: ignore
+
+    max_position : bpy.props.FloatVectorProperty(name="Max Position", size=3, default=(0.2, 0.2, 0.2), min=0) # type: ignore
+
+    max_rotation : bpy.props.FloatVectorProperty(name="Max Rotation", size=3, default=(10, 10, 10), min=0) # type: ignore
+
 class PG_FPNStep(bpy.types.PropertyGroup):
     sf = bpy.props.FloatProperty(name="Spatial Frequency", default=0.0, min=0.0) # Stripe width
 

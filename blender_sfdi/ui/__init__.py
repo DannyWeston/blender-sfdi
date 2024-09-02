@@ -5,13 +5,13 @@ def register():
     camera.register()
     calibration.register()
 
-    fringe_proj.register()
-    object.register()
+    #fringe_proj.register()
+    #object.register()
 
 def unregister():
     projector.unregister()
     camera.unregister()
     calibration.unregister()
 
-    fringe_proj.unregister()
-    object.unregister()
+    #fringe_proj.unregister()
+    #object.unregister()
