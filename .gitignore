@@ -2,6 +2,10 @@ sfdi_addon/sfdi/
 sfdi_addon/data/
 sfdi_addon/fake-bpy-module-master/
 
+blender_sfdi*.zip
+
+build_extension*
+
 .vscode
 dists/
 

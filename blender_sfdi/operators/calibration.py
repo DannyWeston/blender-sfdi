@@ -14,9 +14,12 @@ REPLACE_SLOT_NAME = "CB_Blank"
 POSITION_NODES_NAME = "PositionRandomiser"
 
 def get_cb_mat():
+    # TODO: Investigate instance shaders Blender
+    # Currently inefficient as recreating the same shader just with different params
+
     # Check if already loaded in Blender
-    mat = bpy.data.materials.get(CB_SHADER_NAME)
-    if mat: return mat
+    # mat = bpy.data.materials.get(CB_SHADER_NAME)
+    # if mat: return mat
 
     # Need to make it as it doesn't exist
     mat = bpy.data.materials.new(name=CB_SHADER_NAME)
@@ -32,6 +35,7 @@ def get_cb_mat():
 
     map_node = shader_nodes.new(type="ShaderNodeMapping")
     map_node.location = (200, 0)
+    map_node.vector_type = 'POINT'
     
     check_node = shader_nodes.new(type="ShaderNodeTexChecker")
     check_node.location = (400, 0)
@@ -44,12 +48,13 @@ def get_cb_mat():
     
     # Get BSDF node
     bsdf_node = shader_nodes["Principled BSDF"]
+    bsdf_node.location = (600, 0)
 
     output_node = shader_nodes.get("Material Output")
-    output_node.location = (600, 0)
+    output_node.location = (800, 0)
 
     # Setup node Links
-    node_links.new(tex_node.outputs[0], map_node.inputs[0])
+    node_links.new(tex_node.outputs[2], map_node.inputs[0])
     node_links.new(map_node.outputs[0], check_node.inputs[0])
     node_links.new(check_node.outputs[0], bsdf_node.inputs[0])
 
@@ -166,6 +171,7 @@ def create_checkerboard(location, rotation):
     pos_nodes = bl_obj.modifiers.new(POSITION_NODES_NAME, 'NODES')
     pos_nodes.node_group = make_pos_rand_mod()
 
+
     add_driver(pos_nodes, bl_obj, '["Socket_1"]', 'cb_settings.seed')
     for i in range(3):
         add_driver(pos_nodes, bl_obj, '["Socket_2"]', f'cb_settings.max_position[{i}]', i)
@@ -220,8 +226,6 @@ classes = [
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
-
-    bpy.types.VIEW3D_MT_add.append(lambda self, _: self.layout.operator(OP_AddCheckerboard.bl_idname))
 
 def unregister():
     for cls in classes:

@@ -24,8 +24,17 @@ class PG_ProjSettings(bpy.types.PropertyGroup):
     
     resolution : bpy.props.IntVectorProperty(name="Resolution", size=2, default=(1024, 768), min=1) # type: ignore
 
+class PG_CameraSettings(bpy.types.PropertyGroup):
+    resolution : bpy.props.IntVectorProperty(name="Resolution", size=2, default=(1920, 1080)) # type: ignore
+
+    # sensor_size : bpy.props.FloatVectorProperty(name="Sensor Size", size=2, default=(36.0, 24.0)) # type: ignore
+
+    # focal_length : bpy.props.FloatProperty(name="Focal Length", default=50.0) # type: ignore
+
+    # aspect_ratio : bpy.props.FloatProperty(name="Aspect Ratio", default=16.0/9.0, min=1.0, subtype='FACTOR') # type: ignore
+
 class PG_CheckerboardSettings(bpy.types.PropertyGroup):
-    size : bpy.props.IntVectorProperty(name="Size", size=2, default=(6, 8), min=1) # type: ignore
+    size : bpy.props.IntVectorProperty(name="Size", size=2, default=(8, 6), min=1) # type: ignore
 
     seed : bpy.props.IntProperty(name="Seed", default=0) # type: ignore
 
@@ -53,7 +62,8 @@ classes = [
     PG_Experiment,
 
     PG_ProjSettings,
-    PG_CheckerboardSettings
+    PG_CheckerboardSettings,
+    PG_CameraSettings
 ]
 
 @persistent
@@ -103,6 +113,7 @@ def register():
 
     # Projector settings
     bpy.types.Object.proj_settings = bpy.props.PointerProperty(type=PG_ProjSettings)
+    bpy.types.Object.camera_settings = bpy.props.PointerProperty(type=PG_CameraSettings)
 
     # Checkerboard settings
     bpy.types.Object.cb_settings = bpy.props.PointerProperty(type=PG_CheckerboardSettings)
@@ -121,6 +132,7 @@ def unregister():
         bpy.utils.unregister_class(cls)
     
     del bpy.types.Object.proj_settings
+    del bpy.types.Object.camera_settings
     del bpy.types.Object.cb_settings
 
     del bpy.types.Scene.ExProperties

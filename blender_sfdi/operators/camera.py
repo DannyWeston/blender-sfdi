@@ -4,7 +4,7 @@ from bpy.types import Operator
 class OP_RegisterCamera(Operator):
     bl_idname = "op.register_camera"
     bl_label = "TODO: Write label"
-    
+
     @classmethod
     def poll(cls, context):
         cameras = context.scene.ExCameras
@@ -13,13 +13,13 @@ class OP_RegisterCamera(Operator):
 
     def execute(self, context):
         selected = context.object
-        
+
         cameras = context.scene.ExCameras
-        
+
         new_item = cameras.add()
         new_item.name = selected.name
         new_item.obj = selected
-            
+
         return {'FINISHED'}
 
 class OP_UnregisterCamera(Operator):
@@ -37,24 +37,55 @@ class OP_UnregisterCamera(Operator):
         selected = context.object
 
         selected_id = cameras.find(selected.name)
-        
+
         if selected_id is None: return {'FINISHED'}
 
         cameras.remove(selected_id)
-            
+
         return {'FINISHED'}
 
 class OP_AddCamera(Operator):
-    bl_idname = "op.add_camera"
+    bl_idname = "menu.add_camera"
     bl_label = "SFDI Camera"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    location : bpy.props.FloatVectorProperty(name="Location", default=(0.0, 0.0, 0.0), unit='LENGTH') # type: ignore
+    rotation : bpy.props.FloatVectorProperty(name="Rotation", default=(0.0, 0.0, 0.0), unit='ROTATION') # type: ignore
 
     def execute(self, context):
-        # Add the stuff
-        
+        # Create a default camera
+        scene = context.scene
+
+        bl_camera_obj = BL_CameraFactory.MakeDefaultCamera(self.location, self.rotation)
+
+        scene.collection.objects.link(bl_camera_obj)
+
         return {'FINISHED'}
 
-    def invoke(self, context, event):
-        return context.window_manager.invoke_props_dialog(self)
+class BL_CameraFactory:
+    @staticmethod
+    def MakeDefaultCamera(location, rotation):
+        # Create the object
+        bl_camera = bpy.data.cameras.new("Camera")
+
+        bl_camera_obj = bpy.data.objects.new("Camera", bl_camera)
+
+        bl_camera_obj.location = location
+        bl_camera_obj.rotation_euler = rotation
+
+        return bl_camera_obj
+
+    @staticmethod
+    def MakePiCameraV1(location, rotation):
+        # See: https://www.raspberrypi.com/documentation/accessories/camera.html
+        bl_camera_obj = BL_CameraFactory.MakeDefaultCamera(location, rotation)
+
+        settings = bl_camera_obj.camera_settings
+        settings.resolution = (2592, 1944)
+
+        # TODO: Find a way to limit the minimum and maximum values for non-default instances
+
+        return bl_camera_obj
 
 classes = [
     OP_RegisterCamera,
@@ -65,11 +96,7 @@ classes = [
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
-        
-    bpy.types.VIEW3D_MT_add.append(lambda self, context: self.layout.operator(OP_AddCamera.bl_idname))
 
 def unregister():
-    # TODO: Remove from VIEW3D
-    
     for cls in classes:
         bpy.utils.unregister_class(cls)

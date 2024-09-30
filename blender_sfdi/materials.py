@@ -11,7 +11,7 @@ def replace_material(bl_obj, target_name, new_mat, append_fallback=True):
         bl_obj.material_slots[slot].material = new_mat
     
     elif append_fallback:
-        print("Could not load checkerboard material slots correctly, falling back to just append")
+        print("Could not load material slots correctly, falling back to just append")
         bl_obj.data.materials.append(new_mat)
 
 def proj_mesh_mat():

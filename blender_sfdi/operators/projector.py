@@ -203,19 +203,10 @@ classes = [
     OP_AddProj
 ]
 
-def add_proj_func(self, _):
-    self.layout.operator(OP_AddProj.bl_idname)
-
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
-        
-    bpy.types.VIEW3D_MT_add.append(add_proj_func)
 
 def unregister():
-    # TODO: Remove from VIEW3D
-    
     for cls in classes:
         bpy.utils.unregister_class(cls)
-
-        bpy.types.VIEW3D_MT_add.remove(add_proj_func)
