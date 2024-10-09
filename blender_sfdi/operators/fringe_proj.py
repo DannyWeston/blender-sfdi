@@ -1,8 +1,7 @@
 import bpy
 from bpy.types import Operator
 
-from ..blender import heightmap_to_mesh
-from ..video import BL_FringeProjector, BL_Camera
+from ..blender import heightmap_to_mesh, BL_FringeProjector, BL_Camera
 from .object import hide_objects
 
 from opensfdi.experiment import NStepFPExperiment, FringeProjection

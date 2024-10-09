@@ -1,8 +1,5 @@
 import bpy
-
-
 import opensfdi
-from opensfdi.definitions import update_root
 
 from . import properties, operators, ui
 
@@ -20,7 +17,7 @@ def get_storage_dir():
 
 def register():
     # Set SFDI root directory to correct place (create folder structure also)
-    update_root(get_storage_dir(), True)
+    opensfdi.definitions.update_root(get_storage_dir(), True)
 
     properties.register()
     operators.register()

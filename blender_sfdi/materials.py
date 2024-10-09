@@ -1,6 +1,8 @@
 import bpy
 from math import pi
 
+CB_SHADER_NAME = "CB_Generator"
+
 def replace_material(bl_obj, target_name, new_mat, append_fallback=True):
     if 0 <= (slot := bl_obj.material_slots.find(target_name)):
         # Delete the placeholder material
@@ -75,6 +77,53 @@ def make_pixelate_map_group():
     test_group.links.new(combine_xyz.outputs[0], snap.inputs[1])
     
     test_group.links.new(snap.outputs[0], group_output.inputs[0])
+
+def get_cb_mat():
+    # TODO: Investigate instance shaders Blender
+    # Currently inefficient as recreating the same shader just with different params
+
+    # Check if already loaded in Blender
+    # mat = bpy.data.materials.get(CB_SHADER_NAME)
+    # if mat: return mat
+
+    # Need to make it as it doesn't exist
+    mat = bpy.data.materials.new(name=CB_SHADER_NAME)
+
+    # Setup shader node for pattern part
+    mat.use_nodes = True
+    shader_nodes = mat.node_tree.nodes
+    node_links = mat.node_tree.links
+
+    # Create shader
+    tex_node = shader_nodes.new(type="ShaderNodeTexCoord")
+    tex_node.location = (0, 0)
+
+    map_node = shader_nodes.new(type="ShaderNodeMapping")
+    map_node.location = (200, 0)
+    map_node.vector_type = 'POINT'
+    
+    check_node = shader_nodes.new(type="ShaderNodeTexChecker")
+    check_node.location = (400, 0)
+
+    # White and black squares by default
+    check_node.inputs[1].default_value = (1.0, 1.0, 1.0, 1.0) 
+    check_node.inputs[2].default_value = (0.0, 0.0, 0.0, 1.0)
+    check_node.inputs[3].default_value = 1.0
+
+    
+    # Get BSDF node
+    bsdf_node = shader_nodes["Principled BSDF"]
+    bsdf_node.location = (600, 0)
+
+    output_node = shader_nodes.get("Material Output")
+    output_node.location = (800, 0)
+
+    # Setup node Links
+    node_links.new(tex_node.outputs[2], map_node.inputs[0])
+    node_links.new(map_node.outputs[0], check_node.inputs[0])
+    node_links.new(check_node.outputs[0], bsdf_node.inputs[0])
+
+    return mat
 
 def make_fringe_intensity_map_group():
     test_group = bpy.data.node_groups.new('Fringe Intensity Map', 'ShaderNodeTree')
