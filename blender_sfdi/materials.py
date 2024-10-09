@@ -1,5 +1,5 @@
 import bpy
-from math import pi
+import numpy as np
 
 CB_SHADER_NAME = "CB_Generator"
 
@@ -151,7 +151,7 @@ def make_fringe_intensity_map_group():
     mult_node_1 = test_group.nodes.new('ShaderNodeMath')
     mult_node_1.operation = 'MULTIPLY'
     mult_node_1.location = (200, 0)
-    mult_node_1.inputs[0].default_value = pi * 2.0
+    mult_node_1.inputs[0].default_value = np.pi * 2.0
 
 
 
