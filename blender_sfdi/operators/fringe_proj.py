@@ -1,16 +1,16 @@
 import bpy
 from bpy.types import Operator
 
+import numpy as np
+
 from ..blender import heightmap_to_mesh, BL_FringeProjector, BL_Camera
 from .object import hide_objects
 
 from opensfdi.experiment import NStepFPExperiment, FringeProjection
 from opensfdi import show_image
 
-from math import pi
-
 def equal_phases(count):
-    return [2.0 * pi * (i / count) for i in range(count)]
+    return [2.0 * np.pi * (i / count) for i in range(count)]
 
 class OP_FPNStep(Operator):
     bl_idname = "op.run_experiment"
@@ -28,7 +28,7 @@ class OP_FPNStep(Operator):
             return {'CANCELLED'}
 
         ex = context.scene.ExProperties
-        projector = BL_FringeProjector.from_proj_obj(bl_projectors[0].obj)
+        projector = BL_FringeProjector(bl_projectors[0].obj)
         projector.set_phases(equal_phases(ex.phase_count), True)
 
         # Setup cameras
