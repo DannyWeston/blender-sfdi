@@ -1,11 +1,13 @@
+import logging
 import bpy
 import random
 import numpy as np
 import cv2
 import os
+import tempfile
 
 from opensfdi.video import FringeProjector, Camera
-from opensfdi.definitions import ROOT_DIR
+from opensfdi.definitions import RESULTS_DIR
 from opensfdi.io.std import stdout_redirected
 
 from mathutils import Vector
@@ -333,32 +335,31 @@ class BL_Camera(Camera):
         return self.bl_obj.camera_settings
 
     def capture(self):
+        # Change scene render target to this camera (including settings)
         scene = bpy.context.scene
-        
-        # Need to set this camera as the renderer to be safe
         scene.camera = self.bl_obj
-
-        # Set scene render resolution to this camera's resolution
+    
         scene.render.resolution_x = self.resolution[0]
         scene.render.resolution_y = self.resolution[1]
 
-        # Set scene sample rate
-        bpy.data.scenes[0].cycles.samples
-        
-        # Render scene to temporary file
-        old_filetype = scene.render.image_settings.file_format
-        old_quality = scene.render.image_settings.quality
+        scene.cycles.samples = self.samples
         
         # JPEG with max quality (no compression)
+        # TODO: Maybe remove this and rely upon user to set scene's filetype using normal UI
+        old_filetype = scene.render.image_settings.file_format
+        old_quality = scene.render.image_settings.quality
+        old_filepath = scene.render.filepath
+
         scene.render.image_settings.file_format = 'JPEG'
         scene.render.image_settings.quality = 100
-        
-        # TODO: Change to addon_dir
-        temp_path = os.path.join(ROOT_DIR, f'{self.bl_obj.name}_temp.jpg')
-        #temp_path = os.path.join('C:\\Users\\danie\\Desktop', f'{self.name}_temp.jpg')
+
+        # Use a temporary filename to write the render output
+        temp_path = tempfile.NamedTemporaryFile(dir=RESULTS_DIR, suffix=".jpg").name
         scene.render.filepath = temp_path
-        
-        self.logger.debug("Rendering camera image")
+
+        # Render
+        logger = logging.getLogger(__name__)
+        logger.debug("Rendering camera image ({temp_path})")
         
         calc_time = perf_counter()
         with stdout_redirected():
@@ -367,17 +368,20 @@ class BL_Camera(Camera):
         # Reset old parameters
         scene.render.image_settings.file_format = old_filetype
         scene.render.image_settings.quality = old_quality
+        scene.render.filepath = old_filepath
 
-        self.logger.debug(f"Rendered in {(perf_counter() - calc_time):.2f} seconds")
-        
+        time_took = perf_counter() - calc_time
+        logger.debug(f"Rendered in {time_took:.2f} seconds")
+
         # Load rendered image from disk and convert to correct range (delete old image)
         img = cv2.imread(temp_path)
         img = img.astype(np.float32) / 255.0
 
-        # try:
-        #     os.remove(temp_path)
-        # except:
-        #     self.logger.error("Could not delete temporary render image file")
+        # Remove temporary images that were created
+        try:
+            os.remove(temp_path)
+        except:
+            logger.debug("Could not delete temporary render image file")
 
         return img
 

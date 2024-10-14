@@ -1,15 +1,13 @@
-from . import camera, projector, object, calibration, fringe_proj
+from . import camera, projector, calibration, experiment
 
 def register():
     camera.register()
     projector.register()
-    object.register()
     calibration.register()
-    fringe_proj.register()
+    experiment.register()
 
 def unregister():
     camera.unregister()
     projector.unregister()
-    object.unregister()
     calibration.unregister()
-    fringe_proj.unregister()
+    experiment.unregister()

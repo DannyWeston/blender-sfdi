@@ -24,15 +24,68 @@ class VIEW3D_MT_SFDIMenu(Menu):
             self.layout.operator(op.bl_idname)
 
 
-# # # # # # # # # # # # # # # # # # # # # 
-# Projector
+# # # # # # # # # # # # # # # # # # # # #
+# Experiment
 
+class UI_ExperimentPanel(Panel):
+    bl_label = "Experiment"
+    bl_idname = "SCENE_PT_Experiment"
 
-class UL_RegisteredProjectors(UIList):
+    bl_category = "SFDI"
+    
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+        settings = scene.ex_settings
+
+        layout.template_list("UI_UL_RegisteredObjects", "UI_ExperimentPanel_Objects", settings, "bl_objs", settings, "bl_obj_index")
+
+        row = layout.row()
+        row.operator(operators.experiment.OP_RegisterObject.bl_idname, text="Add")
+        row.operator(operators.experiment.OP_UnregisterObject.bl_idname, text="Remove")
+
+        layout.separator()
+
+        layout.prop(settings, "output_dir")
+
+class UI_NStepFringeProj(Panel):
+    bl_label = "N-Step Profilometry"
+    bl_idname = "SCENE_PT_NStepFringeProj"
+
+    bl_category = "SFDI"
+    bl_parent_id = UI_ExperimentPanel.bl_idname
+    
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+
+    bl_options = {'DEFAULT_CLOSED'}
+    
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+
+        settings = scene.ex_nstepclassic
+
+        # Create layout
+        layout.prop(settings, "camera", text="Camera")
+        layout.prop(settings, "projector", text="Projector")
+
+        row = layout.row()
+        row.prop(settings, "phases")
+        row.prop(settings, "sf")
+
+        layout.prop(settings, "calibrate")
+
+        layout.operator(operators.experiment.OP_FPNStep.bl_idname, text="Run")
+
+class UI_UL_RegisteredObjects(UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
         row = layout.row()
-        
-        if item is None: return
         
         # draw_item must handle the three layout types... Usually 'DEFAULT' and 'COMPACT' can share the same code.
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
@@ -40,9 +93,14 @@ class UL_RegisteredProjectors(UIList):
                 row.prop(item.obj, "name", text="", emboss=False)
             else:
                 layout.label(text="", translate=False)
+        # 'GRID' layout type should be as compact as possible (typically a single icon!).
         elif self.layout_type == 'GRID':
             layout.alignment = 'CENTER'
             layout.label(text="", icon_value=icon)
+
+
+# # # # # # # # # # # # # # # # # # # # # 
+# Projector
 
 class PROJECTOR_PT_Settings(Panel):
     bl_category = "SFDI"
@@ -85,21 +143,6 @@ class PROJECTOR_PT_Settings(Panel):
 # # # # # # # # # # # # # # # # # # # # # 
 # Camera
 
-class UL_RegisteredCameras(UIList):
-    def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
-        row = layout.row()
-        
-        # draw_item must handle the three layout types... Usually 'DEFAULT' and 'COMPACT' can share the same code.
-        if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            if item and item.obj:
-                row.prop(item.obj, "name", text="", emboss=False)
-            else:
-                layout.label(text="", translate=False)
-        # 'GRID' layout type should be as compact as possible (typically a single icon!).
-        elif self.layout_type == 'GRID':
-            layout.alignment = 'CENTER'
-            layout.label(text="", icon_value=icon)
-
 class CAMERA_PT_Settings(Panel):
     bl_category = "SFDI"
     bl_label = 'Camera'
@@ -131,6 +174,7 @@ class CAMERA_PT_Settings(Panel):
 
         box.prop(camera.settings, 'resolution')
         # box.prop(camera_settings, 'aspect_ratio')
+
 
 # # # # # # # # # # # # # # # # # # # # # 
 # Calibration
@@ -170,12 +214,19 @@ class CHECKERBOARD_PT_Settings(Panel):
         box.prop(cb.settings, "max_rotation")
         box.prop(cb.settings, "show_debug")
 
+
+# # # # # # # # # # # # # # # # # # # # #
+# Entry Point
+
 classes = [
     VIEW3D_MT_SFDIMenu,
 
-    UL_RegisteredProjectors,
-    UL_RegisteredCameras,
+    # Experiments
+    UI_ExperimentPanel,
+    UI_UL_RegisteredObjects,
+    UI_NStepFringeProj,
 
+    # Custom Object Types
     PROJECTOR_PT_Settings,
     CAMERA_PT_Settings,
     CHECKERBOARD_PT_Settings,
