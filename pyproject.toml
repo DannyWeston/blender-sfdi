@@ -9,7 +9,7 @@ packages = [{include = "*", from="src"}]
 [tool.poetry.dependencies]
 python = "3.11.7"
 bpy = "4.2.0"
-opensfdi = "0.1.2"
+opensfdi = {path = "../opensfdi", develop = true}
 
 [build-system]
 requires = ["poetry-core"]

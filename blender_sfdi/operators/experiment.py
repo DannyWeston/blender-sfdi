@@ -1,11 +1,12 @@
 import bpy
-import os
-import cv2
+
 from bpy.types import Operator
 
-from opensfdi.experiment import NStepFPExperiment
+from opensfdi.experiment import FPExperiment
+from opensfdi.utils import show_heightmap, show_surface
 
-from ..blender import BL_FringeProjector, BL_Camera
+from ..properties import profilometry
+from .. import blender
 
 def hide_objects(bl_obj_ptrs, value):
     for ptr in bl_obj_ptrs:
@@ -55,59 +56,51 @@ class OP_UnregisterObject(Operator):
             
         return {'FINISHED'}
 
-class OP_FPNStep(Operator):
+class OP_Experiment(Operator):
     bl_idname = "op.run_experiment"
     bl_label = "TODO"
 
     def execute(self, context):
         scene = context.scene
-        settings = scene.ex_nstepclassic
         ex_settings = scene.ex_settings
 
         # TODO: Need to gather the results and present them in a pretty way
         # TODO: Make into a modal operator so Blender doesn't have a fit
 
         # Setup peripherals
-        projector = BL_FringeProjector(settings.projector)
-        cameras = [BL_Camera(settings.camera)]
-        
+        projector = blender.BL_FringeProjector(ex_settings.projector)
+        camera =  blender.BL_Camera(ex_settings.camera)
+
         # Check if supplied output dir was valid
-        output_dir = bpy.path.abspath(ex_settings.output_dir)
-        if output_dir == '' or (not os.path.exists(output_dir)):
-            self.report({"ERROR"}, f"Invalid output directory given")
-            return {'CANCELLED'}
-        
-        self.report({"INFO"}, f"Results will be saved in {output_dir}")
+        # output_dir = Path(bpy.path.abspath(ex_settings.output_dir))
+        # if not output_dir.exists():
+        #     self.report({"ERROR"}, f"Invalid output directory given")
+        #     return {'CANCELLED'}
 
-        needs_calibrate = settings.calibrate
-        phases = settings.phases
+        # Create phase shifting obj
+        ph_shift = [x for x in profilometry.REGISTERED_PHASE_SHIFTS if x.has_name(ex_settings.phase_shift)][0].make_clazz_inst()
+
+        # Create phase unwrapping obj
+        ph_unwrap = [x for x in profilometry.REGISTERED_PHASE_UNWRAPS if x.has_name(ex_settings.phase_unwrap)][0].make_clazz_inst()
+
+        # Load profilometry calibration method
+
+        prof = ex_service.load_calib(ex_settings.profilometry)
+        
+        # Add callbacks to hide the object
         bl_objs = ex_settings.bl_objs
+        prof.add_post_ref_cb(lambda: hide_objects(bl_objs, False)) # Hide objects after
+        hide_objects(bl_objs, True)
 
-        experiment = NStepFPExperiment(cameras, projector, phases)
 
-        # cam_ref_dists = [0.5 for _ in cameras] # Set to 1 metre for now
-        # cam_proj_dists = [(c.get_pos() - projector.get_pos()).length for c in cameras]
+        # Run the experiment and show results
+        experiment = FPExperiment(camera, projector, ph_shift, ph_unwrap, prof)
+        heightmap = experiment.run()
 
-        experiment.add_pre_ref_callback(lambda: hide_objects(bl_objs, True))
-        experiment.add_post_ref_callback(lambda: hide_objects(bl_objs, False))
+        show_heightmap(heightmap)
+        show_surface(heightmap)
 
-        ref_imgs, imgs = experiment.run()
-
-        # Write results to file
-        for i, cam in enumerate(ref_imgs): # Reference images
-            for j, img in enumerate(cam):
-                filename = os.path.join(output_dir, f"ref_{j}.jpg")
-                cv2.imwrite(filename, 255*img) #TODO : Fix properly
-        
-        for i, cam in enumerate(imgs): # Measurement images
-            for j, img in enumerate(cam):
-                filename = os.path.join(output_dir, f"measurement_{j}.jpg")
-                cv2.imwrite(filename, 255*img) #TODO: FIx properly
-        
-        # Run profilometry
-        sf = settings.sf
-    
-        # heightmaps = experiment.classic_ph(ref_imgs, imgs, sf, cam_ref_dists, cam_proj_dists)
+        # ref_imgs, imgs = experiment.run()
 
         # for i, heightmap in enumerate(heightmaps):
         #     #masked = self.mask_heightmap(heightmap)
@@ -122,41 +115,57 @@ class OP_FPNStep(Operator):
         # TODO: Revert properties to original settings before running experiment 
 
         return {'FINISHED'}
-    
-    def mask_heightmap(self, heightmap):
-        import cv2
 
-        # Smooth over the heightmap with median filter
-        smoothed = cv2.medianBlur(heightmap, 3)
+class OP_CalibrateProf(Operator):
+    # TODO: Add support for moving a stage
 
-        smoothed = cv2.normalize(smoothed, None, 255, 0, cv2.NORM_MINMAX, cv2.CV_8U)
+    bl_idname = "op.run_calibration"
+    bl_label = "TODO"
 
-        # Find Canny edges
-        edged = cv2.Canny(smoothed, 30, 200) 
-        cv2.imshow('Canny Edges After Contouring', edged)
-        cv2.waitKey(0)
+    def execute(self, context):
+        scene = context.scene
+        calib_settings = scene.calib_settings
+        ex_settings = scene.ex_settings
 
-        # Finding Contours
-        # Use a copy of the image e.g. edged.copy() 
-        # since findContours alters the image 
-        contours, hierarchy = cv2.findContours(edged, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        # Setup peripherals
+        projector =  blender.BL_FringeProjector(ex_settings.projector)
+        camera =  blender.BL_Camera(ex_settings.camera)
         
-        print("Number of Contours found = " + str(len(contours))) 
+        # Check if supplied output name was valid
+        if self.ex_service.calib_exists(calib_settings.output_name):
+            self.report({"ERROR"}, f"Calibration with name \"{calib_settings.output_name}\" already exists")
+            return {'CANCELLED'}
         
-        # Draw all contours 
-        # -1 signifies drawing all contours 
-        cv2.drawContours(smoothed, contours, -1, (0, 255, 0), 3) 
-        
-        cv2.imshow('Contours', smoothed) 
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        # Create phase shifting obj
+        ph_shift = [x for x in profilometry.REGISTERED_PHASE_SHIFTS if x.has_name(ex_settings.phase_shift)][0].make_clazz_inst()
 
-        return smoothed
+        # Create phase unwrapping obj
+        ph_unwrap = [x for x in profilometry.REGISTERED_PHASE_UNWRAPS if x.has_name(ex_settings.phase_unwrap)][0].make_clazz_inst()
+
+        # Create profilometry object
+        prof = [x for x in profilometry.REGISTERED_PROFS if x.has_name(calib_settings.profilometry)][0] # Create profilometry object
+        prof = prof.make_clazz_inst(calib_settings.output_name)
+
+        # Hide all of the objects-to-be-hidden (ready for calibration)
+        hide_objects(ex_settings.bl_objs, True)
+
+        # Run the calibration and save the results
+        def f(height): print(f"Moving stage to {height}")
+        
+        experiment = FPExperiment(camera, projector, ph_shift, ph_unwrap, prof)
+        experiment.on_height_measurement(f)
+        experiment.calibrate([0.0, 1.0, 2.0]) # TODO: Fetch heights from provided list
+        
+        ex_service.save_calib(experiment)
+
+        return {'FINISHED'}
 
 classes = [
-    OP_FPNStep,
     OP_RegisterObject,
     OP_UnregisterObject,
+
+    OP_Experiment,
+    OP_CalibrateProf,
 ]
 
 def register():

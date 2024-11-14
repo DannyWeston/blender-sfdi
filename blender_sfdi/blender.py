@@ -3,22 +3,23 @@ import bpy
 import random
 import numpy as np
 import cv2
-import os
 import tempfile
 
-from opensfdi.video import FringeProjector, Camera
-from opensfdi.definitions import RESULTS_DIR
-from opensfdi.io.std import stdout_redirected
-
 from mathutils import Vector
-
 from time import perf_counter
+
+from opensfdi.video import FringeProjector, Camera
+from opensfdi.utils import stdout_redirected
+from opensfdi.services import ExperimentService, FileProfRepo
+
+from pathlib import Path
 
 from . import materials
 from .definitions import MODELS_DIR
 
+BL_EX_SERVICE = ExperimentService(FileProfRepo(Path(bpy.utils.extension_path_user(__package__, create=True))))
 
-def add_driver(source, target, prop, dataPath, index = -1, func = ''):
+def add_driver(source, target, prop, dataPath, index=-1, func=''):
     ''' Add driver to source prop (at index), driven by target dataPath '''
 
     if index != -1: d = source.driver_add(prop, index).driver
@@ -29,7 +30,7 @@ def add_driver(source, target, prop, dataPath, index = -1, func = ''):
     v.targets[0].id = target
     v.targets[0].data_path = dataPath
 
-    d.expression = func + "(" + v.name + ")" if func else v.name
+    d.expression = f"{func}({v.name})" if func else v.name
 
 def reset_delta_transform(bl_obj):
     bl_obj.delta_location = (0.0, 0.0, 0.0)
@@ -70,9 +71,6 @@ def heightmap_to_mesh(heightmap, name="Heightmap"):
     mesh.update()
     
     return mesh
-
-def mesh_to_heightmap(mesh):
-    pass
 
 
 # # # # # # # # # # # # # # # # # # # # # 
@@ -183,10 +181,10 @@ class BL_FringeProjector(FringeProjector):
 
         # Check if Fringe Intensity Map group exists, create if not
         if light_nodes.get("Fringe Intensity Map", None) is None: 
-            materials.make_fringe_intensity_map_group()
+            materials.fringe_intensity_map_group()
             
         if light_nodes.get("Vector Pixelate", None) is None: 
-            materials.make_pixelate_map_group()
+            materials.pixelate_map_group()
 
         tex_node = light_nodes.new(type="ShaderNodeTexCoord")
         tex_node.location = (0, 0)
@@ -295,6 +293,7 @@ class BL_FringeProjector(FringeProjector):
         
         return light_obj
 
+
 # # # # # # # # # # # # # # # # # # # # # 
 # Camera
 
@@ -350,40 +349,31 @@ class BL_Camera(Camera):
         old_quality = scene.render.image_settings.quality
         old_filepath = scene.render.filepath
 
-        scene.render.image_settings.file_format = 'JPEG'
-        scene.render.image_settings.quality = 100
+        scene.render.image_settings.file_format = 'PNG'
+        scene.render.image_settings.compression = 0
 
         # Use a temporary filename to write the render output
-        temp_path = tempfile.NamedTemporaryFile(dir=RESULTS_DIR, suffix=".jpg").name
-        scene.render.filepath = temp_path
+        with tempfile.NamedTemporaryFile(dir=bpy.path.abspath("//"), suffix=".png") as temp_file:
+            temp_path = temp_file.name
+            scene.render.filepath = temp_path
 
-        # Render
-        logger = logging.getLogger(__name__)
-        logger.debug("Rendering camera image ({temp_path})")
-        
-        calc_time = perf_counter()
-        with stdout_redirected():
-            bpy.ops.render.render(write_still=True)
-        
-        # Reset old parameters
-        scene.render.image_settings.file_format = old_filetype
-        scene.render.image_settings.quality = old_quality
-        scene.render.filepath = old_filepath
+            logger = logging.getLogger(__name__)
+            logger.debug(f"Rendering camera image ({temp_path})")
+            
+            calc_time = perf_counter()
+            with stdout_redirected():
+                bpy.ops.render.render(write_still=True)
+            
+            # Reset old parameters
+            scene.render.image_settings.file_format = old_filetype
+            scene.render.image_settings.quality = old_quality
+            scene.render.filepath = old_filepath
 
-        time_took = perf_counter() - calc_time
-        logger.debug(f"Rendered in {time_took:.2f} seconds")
+            time_took = perf_counter() - calc_time
+            logger.debug(f"Rendered in {time_took:.2f} seconds")
 
-        # Load rendered image from disk and convert to correct range (delete old image)
-        img = cv2.imread(temp_path)
-        img = img.astype(np.float32) / 255.0
-
-        # Remove temporary images that were created
-        try:
-            os.remove(temp_path)
-        except:
-            logger.debug("Could not delete temporary render image file")
-
-        return img
+            # Load rendered image from disk and convert to correct range (delete old image)
+            return cv2.imread(temp_path).astype(np.float32) / 255.0
 
     @staticmethod
     def create_bl_obj(location, rotation):
@@ -443,7 +433,7 @@ class BL_Camera(Camera):
 #         return result
 
 
-# # # # # # # # # # # # # # # # # # # # # 
+# # # # # # # # # # # # # # # # # # # # #
 # Checkerboard
 
 DEFAULT_CB_PATH =  str(MODELS_DIR / "checkerboard.obj")
@@ -499,7 +489,7 @@ class BL_Checkerboard:
         bl_obj.data["IsCheckerboard"] = True
 
         # Setup generator material with driver for changing the size of the checkerboard
-        mat = materials.get_cb_mat()
+        mat = materials.checkerboard_mat()
         materials.replace_material(bl_obj, CB_SLOT_NAME, mat)
 
         map_node = mat.node_tree.nodes["Mapping"]
