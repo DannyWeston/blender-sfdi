@@ -4,8 +4,6 @@ sfdi_addon/fake-bpy-module-master/
 
 blender_sfdi*.zip
 
-build_extension*
-
 .vscode
 dists/
 
