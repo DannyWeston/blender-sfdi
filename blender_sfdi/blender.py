@@ -7,17 +7,16 @@ import tempfile
 
 from mathutils import Vector
 from time import perf_counter
-
-from opensfdi.video import FringeProjector, Camera
-from opensfdi.utils import stdout_redirected
-from opensfdi.services import ExperimentService, FileProfRepo
-
 from pathlib import Path
 
-from . import materials
-from .definitions import MODELS_DIR
+from opensfdi.devices import FringeProjector, Camera
+from opensfdi.utils import stdout_redirected
+from opensfdi.services import ExperimentService, FileExperimentRepo, FileImageRepo
 
-BL_EX_SERVICE = ExperimentService(FileProfRepo(Path(bpy.utils.extension_path_user(__package__, create=True))))
+from . import materials
+from .definitions import MODELS_DIR, get_storage_path
+
+BL_EX_SERVICE = ExperimentService(FileExperimentRepo(get_storage_path()), FileImageRepo(get_storage_path()))
 
 def add_driver(source, target, prop, dataPath, index=-1, func=''):
     ''' Add driver to source prop (at index), driven by target dataPath '''
@@ -338,42 +337,38 @@ class BL_Camera(Camera):
         scene = bpy.context.scene
         scene.camera = self.bl_obj
     
+        # Set scene render settings to match camera
         scene.render.resolution_x = self.resolution[0]
         scene.render.resolution_y = self.resolution[1]
 
-        scene.cycles.samples = self.samples
-        
-        # JPEG with max quality (no compression)
-        # TODO: Maybe remove this and rely upon user to set scene's filetype using normal UI
-        old_filetype = scene.render.image_settings.file_format
-        old_quality = scene.render.image_settings.quality
-        old_filepath = scene.render.filepath
+        # Run render
+        logger = logging.getLogger(__name__)
+        calc_time = perf_counter()
 
+        img = self.__render_and_load(scene)
+
+        logger.debug(f"Image rendered in {(perf_counter() - calc_time):.2f} seconds")
+
+        return img
+
+    def __render_and_load(self, scene):
         scene.render.image_settings.file_format = 'PNG'
         scene.render.image_settings.compression = 0
 
-        # Use a temporary filename to write the render output
-        with tempfile.NamedTemporaryFile(dir=bpy.path.abspath("//"), suffix=".png") as temp_file:
-            temp_path = temp_file.name
-            scene.render.filepath = temp_path
+        # Set the filepath to use for the image render
+        file_path = Path(bpy.app.tempdir) / "render.png"
+        scene.render.filepath = str(file_path)
 
-            logger = logging.getLogger(__name__)
-            logger.debug(f"Rendering camera image ({temp_path})")
-            
-            calc_time = perf_counter()
-            with stdout_redirected():
-                bpy.ops.render.render(write_still=True)
-            
-            # Reset old parameters
-            scene.render.image_settings.file_format = old_filetype
-            scene.render.image_settings.quality = old_quality
-            scene.render.filepath = old_filepath
+        # Redirect stdout as it spams the console
+        with stdout_redirected():
+            bpy.ops.render.render(write_still=True)
 
-            time_took = perf_counter() - calc_time
-            logger.debug(f"Rendered in {time_took:.2f} seconds")
+        data = cv2.imread(file_path).astype(np.float32) / 255.0
+        
+        # Delete the rendered image file
+        file_path.unlink()
 
-            # Load rendered image from disk and convert to correct range (delete old image)
-            return cv2.imread(temp_path).astype(np.float32) / 255.0
+        return data
 
     @staticmethod
     def create_bl_obj(location, rotation):
@@ -434,7 +429,43 @@ class BL_Camera(Camera):
 
 
 # # # # # # # # # # # # # # # # # # # # #
-# Checkerboard
+# Calibration
+
+class BL_MotorStage:
+    def __init__(self, bl_obj):
+        if not BL_MotorStage.is_motorstage(bl_obj):
+            raise ValueError(f"{bl_obj.name} is not a motorstage")
+
+        self.__bl_obj = bl_obj
+
+    @property
+    def min_height(self):
+        return self.settings.min_height
+    
+    @property
+    def max_height(self):
+        return self.settings.max_height
+    
+    @property
+    def steps(self):
+        return self.settings.steps
+
+    @property
+    def settings(self):
+        return self.bl_obj.ms_settings
+    
+    @property
+    def bl_obj(self):
+        return self.__bl_obj
+    
+    @staticmethod
+    def is_motorstage(bl_obj):
+        return bl_obj and ("IsMotorStage" in bl_obj.data)
+
+    @staticmethod
+    def from_name(name):
+        return BL_MotorStage(bpy.data.objects[name])
+
 
 DEFAULT_CB_PATH =  str(MODELS_DIR / "checkerboard.obj")
 CB_SLOT_NAME = "CB_Blank"

@@ -1,34 +1,36 @@
+from abc import ABC, abstractmethod
 import bpy
 from bpy.types import Panel, UIList, Menu
 
-import opensfdi.phase as phase
-import opensfdi.profilometry as prof
-
-from .blender import BL_FringeProjector, BL_Camera, BL_Checkerboard
+from .blender import BL_FringeProjector, BL_Camera, BL_Checkerboard, BL_MotorStage
 from . import operators
 
 # # # # # # # # # # # # # # # # # # # # # 
-# Add Object Menu
+# Abstract classes
 
-class VIEW3D_MT_SFDIMenu(Menu):
-    bl_idname = "VIEW3D_MT_SFDIMenu"
-    bl_label = "SFDI"
-
-    ops = [
-        operators.calibration.OP_AddCheckerboard,
-        operators.projector.OP_AddProj,
-
-        operators.camera.OP_AddCamera,
-        operators.camera.OP_AddPiCameraV1
-    ]
-
-    def draw(self, context):
-        for op in VIEW3D_MT_SFDIMenu.ops:
-            self.layout.operator(op.bl_idname)
+class IPanelPropSection(ABC):
+    @abstractmethod
+    def draw(self, settings: bpy.types.PropertyGroup, layout):
+        pass
 
 
 # # # # # # # # # # # # # # # # # # # # #
 # Experiment
+
+class UI_UL_RegisteredObjects(UIList):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
+        row = layout.row()
+        
+        # draw_item must handle the three layout types... Usually 'DEFAULT' and 'COMPACT' can share the same code.
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            if item and item.obj:
+                row.prop(item.obj, "name", text="", emboss=False)
+            else:
+                layout.label(text="", translate=False)
+        # 'GRID' layout type should be as compact as possible (typically a single icon!).
+        elif self.layout_type == 'GRID':
+            layout.alignment = 'CENTER'
+            layout.label(text="", icon_value=icon)
 
 class UI_ExperimentPanel(Panel):
     bl_label = "Experiment"
@@ -46,227 +48,79 @@ class UI_ExperimentPanel(Panel):
         scene = context.scene
         settings = scene.ex_settings
 
-        layout.template_list("UI_UL_RegisteredObjects", "UI_ExperimentPanel_Objects", settings, "bl_objs", settings, "bl_obj_index")
+        box = layout.box()
+        box.template_list("UI_UL_RegisteredObjects", "UI_ExperimentPanel_Objects", settings, "bl_objs", settings, "bl_obj_index")
 
-        row = layout.row()
-        row.operator(operators.experiment.OP_RegisterObject.bl_idname, text="Add")
-        row.operator(operators.experiment.OP_UnregisterObject.bl_idname, text="Remove")
+        row = box.row()
+        row.operator(operators.experiment.OP_RegisterObject.bl_idname, text="Add Object")
+        row.operator(operators.experiment.OP_UnregisterObject.bl_idname, text="Remove Object")
 
-        row = layout.row()
+        row.prop(settings, "only_images", text="Only Generate Images")
+
+        # Selected camera / projector
+        row = box.row()
         row.prop(settings, "camera", text="Camera")
         row.prop(settings, "projector", text="Projector")
 
+        # Phase Shift
+        box = layout.box()
+        box.prop(settings.phase_shift, "methods", text="Phase Shift")
+        active = getattr(scene, settings.phase_shift.methods)
+        active.draw(box)
 
-        # Experiment Enums
+        # Phase Unwrap
+        box = layout.box()
+        box.prop(settings.phase_unwrap, "methods", text="Phase Unwrap")
+        active = getattr(scene, settings.phase_unwrap.methods)
+        active.draw(box)
 
-        layout.separator()
-        row = layout.row()
+        # Profilometry
+        box = layout.box()
+        box.prop(settings.profilometry, "methods", text="Profilometry")
+        active = getattr(scene, settings.profilometry.methods)
+        active.draw(box)
 
-        row.prop(settings, "phase_shift", text="Phase Shift")
-        row.prop(settings, "phase_unwrap", text="Phase Unwrap")
-        row.prop(settings, "calibration_dir", text="Calibration Directory")
+        # Calibration Operator
+        box = layout.box()
 
-        # Calibration Directory
+        row = box.row() # Motor Stage
+        row.prop(settings, "motor_stage", text="Motor Stage")
 
-        layout.separator()
-        row = layout.row()
-
-        layout.separator()
-        row = layout.row()
-        row.prop(settings, "output_dir", text="Output Directory")
-        row.operator(operators.experiment.OP_Experiment.bl_idname, text="Run")
-
-class UI_UL_RegisteredObjects(UIList):
-    def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
-        row = layout.row()
-        
-        # draw_item must handle the three layout types... Usually 'DEFAULT' and 'COMPACT' can share the same code.
-        if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            if item and item.obj:
-                row.prop(item.obj, "name", text="", emboss=False)
-            else:
-                layout.label(text="", translate=False)
-        # 'GRID' layout type should be as compact as possible (typically a single icon!).
-        elif self.layout_type == 'GRID':
-            layout.alignment = 'CENTER'
-            layout.label(text="", icon_value=icon)
-
-class UI_CalibrationPanel(Panel):
-    bl_label = "Calibration"
-    bl_idname = "SCENE_PT_Calibration"
-
-    bl_category = "SFDI"
-    
-    bl_space_type = "VIEW_3D"
-    bl_region_type = "UI"
-
-    bl_options = {'DEFAULT_CLOSED'}
-
-    def draw(self, context):
-        layout = self.layout
-        scene = context.scene
-        settings = scene.calib_settings
-
-        # Camera projector selection
-        row = layout.row()
-        row.prop(settings, "camera", text="Camera")
-        row.prop(settings, "projector", text="Projector")
-
-
-        # Fringe projection specifics
-        layout.separator()
-        row = layout.row()
-
-        row.prop(settings, "phase_shift", text="Phase Shift")
-        row.prop(settings, "phase_unwrap", text="Phase Unwrap")
-        row.prop(settings, "profilometry", text="Profilometry")
-
-        # Run
-        layout.separator()
-        row = layout.row()
-        
-        row.prop(settings, "output_dir", text="Output Directory")
+        row = box.row() # Output Name / Run Button
+        sub = row.row()
+        sub.scale_x = 2.0
+        sub.prop(settings, "output_name", text="Name")
         row.operator(operators.experiment.OP_CalibrateProf.bl_idname, text="Calibrate")
 
+        # Experiment Operator
+        box = layout.box()
+        row = box.row()
+        sub = row.row()
+        sub.scale_x = 2.0
+        sub.prop(settings, "calibration_files", text="Calibration")
+        row.operator(operators.experiment.OP_Experiment.bl_idname, text="Run")
 
-# # # # # # # # # # # # # # # # # # # # #
-# Phase Shifting
+# # # # # # # # # # # # # # # # # # # # # 
+# Add Object Menu
 
-class UI_PhaseShiftNStep(Panel):
-    bl_label = "N-Step Phase Shifting"
-    bl_idname = "SCENE_PT_PhaseShiftNStep"
+class VIEW3D_MT_SFDIMenu(Menu):
+    bl_idname = "VIEW3D_MT_SFDIMenu"
+    bl_label = "SFDI"
 
-    bl_category = "SFDI"
-    bl_parent_id = UI_ExperimentPanel.bl_idname
-    
-    bl_space_type = "VIEW_3D"
-    bl_region_type = "UI"
+    ops = [
+        operators.calibration.OP_AddCheckerboard,
+        operators.calibration.OP_AddMotorStage,
 
-    bl_options = {'DEFAULT_CLOSED'}
-    
-    def draw(self, context):
-        layout = self.layout
-        scene = context.scene
+        operators.projector.OP_AddProj,
 
-        settings = getattr(scene, phase.NStepPhaseShift.__name__)
-
-        # Create layout
-        row = layout.row()
-        row.prop(settings, "phase_count")
- 
-        # layout.prop(settings, "calibrate")
-
-        # layout.operator(operators.experiment.OP_FPNStep.bl_idname, text="Run")
-
-
-# # # # # # # # # # # # # # # # # # # # #
-# Phase Unwrapping
-
-class UI_PhaseUnwrapReliability(Panel):
-    bl_label = "Reliability Phase Unwrapping"
-    bl_idname = "SCENE_PT_PhaseUnwrapReliability"
-
-    bl_category = "SFDI"
-    bl_parent_id = UI_ExperimentPanel.bl_idname
-    
-    bl_space_type = "VIEW_3D"
-    bl_region_type = "UI"
+        operators.camera.OP_AddCamera,
+        operators.camera.OP_AddPiCameraV1
+    ]
 
     def draw(self, context):
-        layout = self.layout
-        scene = context.scene
+        for op in VIEW3D_MT_SFDIMenu.ops:
+            self.layout.operator(op.bl_idname)
 
-        settings = getattr(scene, phase.ReliabilityPhaseUnwrap.__name__)
-
-        # Create layout
-        row = layout.row()
-        row.prop(settings, "wrap_around")
- 
-        # layout.prop(settings, "calibrate")
-
-        # layout.operator(operators.experiment.OP_FPNStep.bl_idname, text="Run")
-
-
-
-# # # # # # # # # # # # # # # # # # # # #
-# Profilometry
-
-class UI_PhaseProfClassic(Panel):
-    bl_label = "Classic Phase-Height Profilometry"
-    bl_idname = "SCENE_PT_PhaseProfClassic"
-
-    bl_category = "SFDI"
-    bl_parent_id = UI_CalibrationPanel.bl_idname
-    
-    bl_space_type = "VIEW_3D"
-    bl_region_type = "UI"
-
-    bl_options = {'DEFAULT_CLOSED'}
-
-    @classmethod
-    def poll(self, context):
-        calib_settings = context.scene.calib_settings
-            
-        return calib_settings.profilometry == prof.ClassicProf.__name__
-    
-    def draw(self, context):
-        layout = self.layout
-        scene = context.scene
-
-        settings = getattr(scene, prof.ClassicProf.__name__)        
-
-        # Create layout
-        row = layout.row()
-        row.prop(settings, "sf")
-        row.prop(settings, "cam_ref_dist")
-        row.prop(settings, "cam_proj_dist")
-
-class UI_PhaseProfLinearInverse(Panel):
-    bl_label = "Linear-Inverse Phase-Height Profilometry"
-    bl_idname = "SCENE_PT_PhaseProfLinearInverse"
-
-    bl_category = "SFDI"
-    bl_parent_id = UI_CalibrationPanel.bl_idname
-    
-    bl_space_type = "VIEW_3D"
-    bl_region_type = "UI"
-
-    @classmethod
-    def poll(self, context):
-        calib_settings = context.scene.calib_settings
-            
-        return calib_settings.profilometry == prof.LinearInverseProf.__name__
-    
-    def draw(self, context):
-        layout = self.layout
-        scene = context.scene
-
-        settings = getattr(scene, prof.LinearInverseProf.__name__) 
-
-class UI_PhaseProfPolynomial(Panel):
-    bl_label = "Polynomial Phase-Height Profilometry"
-    bl_idname = "SCENE_PT_PhaseProfPolynomial"
-
-    bl_category = "SFDI"
-    bl_parent_id = UI_CalibrationPanel.bl_idname
-    
-    bl_space_type = "VIEW_3D"
-    bl_region_type = "UI"
-    
-    @classmethod
-    def poll(self, context):
-        calib_settings = context.scene.calib_settings
-            
-        return calib_settings.profilometry == prof.PolynomialProf.__name__
-
-    def draw(self, context):
-        layout = self.layout
-        scene = context.scene
-
-        settings = getattr(scene, prof.PolynomialProf.__name__) 
-
-        row = layout.row()
-        row.prop(settings, "degree", text="Degree")
 
 # # # # # # # # # # # # # # # # # # # # # 
 # Projector
@@ -345,19 +199,6 @@ class CAMERA_PT_Settings(Panel):
         # box.prop(camera_settings, 'aspect_ratio')
 
 
-# # # # # # # # # # # # # # # # # # # # # 
-# Calibration
-
-def on_cb_debug(self, ctx):
-    cb = BL_Checkerboard(ctx.object)
-    
-    if cb.settings.show_debug:
-        s = cb.settings
-        cb.random_transform(s.max_position, s.max_rotation, s.seed)
-        return
-
-    cb.restore_transform()
-
 class CHECKERBOARD_PT_Settings(Panel):
     bl_category = "SFDI"
     bl_label = "Checkerboard"
@@ -384,6 +225,35 @@ class CHECKERBOARD_PT_Settings(Panel):
         box.prop(cb.settings, "show_debug")
 
 
+
+# # # # # # # # # # # # # # # # # # # # # 
+# Motor Stage
+
+class MOTORSTAGE_PT_Settings(Panel):
+    bl_category = "SFDI"
+    bl_label = 'Motor Stage'
+
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+
+    @classmethod
+    def poll(cls, context):
+        return BL_MotorStage.is_motorstage(context.object)
+
+    def draw(self, context):
+        motor_stage = BL_MotorStage(context.object)
+
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        box = layout.box()
+        row = box.row() # Min / max height
+        row.prop(motor_stage.settings, 'min_height')
+        row.prop(motor_stage.settings, 'max_height')
+
+        box.prop(motor_stage.settings, 'steps')
+
 # # # # # # # # # # # # # # # # # # # # #
 # Entry Point
 
@@ -393,22 +263,12 @@ classes = [
     # Experiments
     UI_ExperimentPanel,
     UI_UL_RegisteredObjects,
-    UI_CalibrationPanel,
-
-    # Phase Shifting
-    UI_PhaseShiftNStep,
-
-    # Phase Unwrapping
-
-    # Profilometry
-    UI_PhaseProfClassic,
-    UI_PhaseProfPolynomial,
-    UI_PhaseProfLinearInverse,
 
     # Custom Object Types
     PROJECTOR_PT_Settings,
     CAMERA_PT_Settings,
     CHECKERBOARD_PT_Settings,
+    MOTORSTAGE_PT_Settings,
 ]
 
 def check_stale_objs(scene):

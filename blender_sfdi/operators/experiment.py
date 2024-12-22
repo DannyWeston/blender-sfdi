@@ -1,11 +1,12 @@
 import bpy
+import numpy as np
 
 from bpy.types import Operator
 
-from opensfdi.experiment import FPExperiment
+from opensfdi.experiment import Experiment
 from opensfdi.utils import show_heightmap, show_surface
 
-from ..properties import profilometry
+from ..properties import PG_Experiment
 from .. import blender
 
 def hide_objects(bl_obj_ptrs, value):
@@ -62,40 +63,43 @@ class OP_Experiment(Operator):
 
     def execute(self, context):
         scene = context.scene
-        ex_settings = scene.ex_settings
+        settings = scene.ex_settings
 
         # TODO: Need to gather the results and present them in a pretty way
         # TODO: Make into a modal operator so Blender doesn't have a fit
 
         # Setup peripherals
-        projector = blender.BL_FringeProjector(ex_settings.projector)
-        camera =  blender.BL_Camera(ex_settings.camera)
+        projector = blender.BL_FringeProjector(settings.projector)
+        camera = blender.BL_Camera(settings.camera)
 
-        # Check if supplied output dir was valid
-        # output_dir = Path(bpy.path.abspath(ex_settings.output_dir))
-        # if not output_dir.exists():
-        #     self.report({"ERROR"}, f"Invalid output directory given")
-        #     return {'CANCELLED'}
-
-        # Create phase shifting obj
-        ph_shift = [x for x in profilometry.REGISTERED_PHASE_SHIFTS if x.has_name(ex_settings.phase_shift)][0].make_clazz_inst()
-
-        # Create phase unwrapping obj
-        ph_unwrap = [x for x in profilometry.REGISTERED_PHASE_UNWRAPS if x.has_name(ex_settings.phase_unwrap)][0].make_clazz_inst()
+        # TODO: Allow for changing phase-shift / unwrapping methods after loading calibration
 
         # Load profilometry calibration method
-
-        prof = ex_service.load_calib(ex_settings.profilometry)
+        exp = blender.BL_EX_SERVICE.load_experiment(settings.calibration_files) # Get profilometry from name
         
         # Add callbacks to hide the object
-        bl_objs = ex_settings.bl_objs
-        prof.add_post_ref_cb(lambda: hide_objects(bl_objs, False)) # Hide objects after
-        hide_objects(bl_objs, True)
+        exp.add_post_phasemap_cbs(lambda: hide_objects(settings.bl_objs, False))
 
+        # Hide the objects ready for reference measurement
+        hide_objects(settings.bl_objs, True)
 
         # Run the experiment and show results
-        experiment = FPExperiment(camera, projector, ph_shift, ph_unwrap, prof)
-        heightmap = experiment.run()
+        imgs = exp.get_imgs(camera, projector) # TODO: Allow for image generation only
+
+        # Save the images to disk
+        for phasemap in range(imgs.shape[0]):
+            for phase in range(imgs.shape[1]):
+                blender.BL_EX_SERVICE.save_img(imgs[phasemap, phase], f'img{phasemap}_phase{phase}')
+
+        # Check if we are only generating images
+        if settings.only_images: 
+            return {'FINISHED'}
+        
+        # These images are currently in RGB format
+        # TODO: Add way to choose between keep channel or take mean
+        imgs = np.mean(imgs, axis=5)
+
+        heightmap = exp.heightmap(imgs)
 
         show_heightmap(heightmap)
         show_surface(heightmap)
@@ -124,41 +128,80 @@ class OP_CalibrateProf(Operator):
 
     def execute(self, context):
         scene = context.scene
-        calib_settings = scene.calib_settings
-        ex_settings = scene.ex_settings
+        settings: PG_Experiment = scene.ex_settings
 
         # Setup peripherals
-        projector =  blender.BL_FringeProjector(ex_settings.projector)
-        camera =  blender.BL_Camera(ex_settings.camera)
+        projector = blender.BL_FringeProjector(settings.projector)
+        camera = blender.BL_Camera(settings.camera)
         
         # Check if supplied output name was valid
-        if self.ex_service.calib_exists(calib_settings.output_name):
-            self.report({"ERROR"}, f"Calibration with name \"{calib_settings.output_name}\" already exists")
+        if blender.BL_EX_SERVICE.exp_exists(settings.output_name):
+            self.report({"ERROR"}, f"Calibration with name \"{settings.output_name}\" already exists")
             return {'CANCELLED'}
         
-        # Create phase shifting obj
-        ph_shift = [x for x in profilometry.REGISTERED_PHASE_SHIFTS if x.has_name(ex_settings.phase_shift)][0].make_clazz_inst()
+        # Create objects from scenes 
+        shift_prop = settings.phase_shift.methods
+        ph_shift = getattr(scene, shift_prop).make_instance()
 
-        # Create phase unwrapping obj
-        ph_unwrap = [x for x in profilometry.REGISTERED_PHASE_UNWRAPS if x.has_name(ex_settings.phase_unwrap)][0].make_clazz_inst()
+        unwrap_prop = settings.phase_unwrap.methods
+        ph_unwrap = getattr(scene, unwrap_prop).make_instance()
 
-        # Create profilometry object
-        prof = [x for x in profilometry.REGISTERED_PROFS if x.has_name(calib_settings.profilometry)][0] # Create profilometry object
-        prof = prof.make_clazz_inst(calib_settings.output_name)
+        prof_prop = settings.profilometry.methods
+        prof = getattr(scene, prof_prop).make_instance(name=settings.output_name)
 
+        
         # Hide all of the objects-to-be-hidden (ready for calibration)
-        hide_objects(ex_settings.bl_objs, True)
+        hide_objects(settings.bl_objs, True)
 
-        # Run the calibration and save the results
-        def f(height): print(f"Moving stage to {height}")
+        # Check if a motor stage is needed by the calibration method
+        if not prof.needs_motor_stage:
+            print("Not supported yet")
+            return {'FINISHED'}
+
+        motor_stage = blender.BL_MotorStage(settings.motor_stage)
         
-        experiment = FPExperiment(camera, projector, ph_shift, ph_unwrap, prof)
-        experiment.on_height_measurement(f)
-        experiment.calibrate([0.0, 1.0, 2.0]) # TODO: Fetch heights from provided list
+        exp = Experiment(settings.output_name, prof, ph_shift, ph_unwrap)
+
+        heights = np.linspace(motor_stage.min_height, motor_stage.max_height, motor_stage.steps)
+
+        height_imgs = []
+        for height in heights:
+            motor_stage.bl_obj.delta_location[2] = height
+            imgs = exp.get_imgs(camera, projector)
+            height_imgs.append(imgs)
+
+        # Reset motor stage back to 0
+        motor_stage.bl_obj.delta_location[2] = 0.0
+
+        height_imgs = np.array(height_imgs)
+
+        # Height Phasemap Phase 
+
+        # Save the images to disk
+        for h in range(motor_stage.steps):
+            for ph in range(height_imgs.shape[1]):
+                for p in range(height_imgs.shape[2]):
+                    temp = height_imgs[h, ph, p]
+                    img_name = f'{settings.output_name}_calib{h}_{ph}_phase{p}'
+                    print(temp.shape)
+                    blender.BL_EX_SERVICE.save_img(temp, img_name)
+
+        # Check if we are only generating images
+        if settings.only_images: 
+            return {'FINISHED'}
         
-        ex_service.save_calib(experiment)
+        # These images are currently in RGB format
+        # TODO: Add way to choose between keep channel or take mean
+        height_imgs = np.mean(height_imgs, axis=5)
+    
+        exp.calibrate(height_imgs, heights)
+
+        # Save the calibration
+        blender.BL_EX_SERVICE.save_experiment(exp)
 
         return {'FINISHED'}
+        
+
 
 classes = [
     OP_RegisterObject,

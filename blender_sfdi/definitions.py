@@ -1,3 +1,4 @@
+import bpy
 import addon_utils
 
 from pathlib import Path
@@ -8,6 +9,10 @@ def get_addon_path():
             return Path(mod.__file__).parent
         
     return None
+
+def get_storage_path():
+    path = Path(bpy.utils.extension_path_user(__package__, create=True))
+    return path
 
 ADDON_DIR = get_addon_path()
 
