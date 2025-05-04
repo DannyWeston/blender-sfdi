@@ -3,7 +3,6 @@ import bpy
 import random
 import numpy as np
 import cv2
-import tempfile
 
 from mathutils import Vector
 from time import perf_counter
@@ -39,8 +38,8 @@ def random_delta_transform(bl_obj, max_pos, max_rot, seed=0):
     random.seed(seed)
 
     for i in range(3):
-        bl_obj.delta_location[i] = max_pos[i] * random.uniform(-1.0, 1.0)
-        bl_obj.delta_rotation_euler[i] = max_rot[i] * random.uniform(-1.0, 1.0)
+        bl_obj.delta_location[i] = max_pos[i] * random.uniform(0.0, 1.0)
+        bl_obj.delta_rotation_euler[i] = max_rot[i] * random.uniform(0.0, 1.0)
 
 def heightmap_to_mesh(heightmap, name="Heightmap"):
     height, width = heightmap.shape
@@ -124,18 +123,6 @@ class BL_FringeProjector(FringeProjector):
         # Don't actually need to do anything because the Blender Renderer handles the image projection for us
         # When changing the phase
         pass
-
-        #self.logger.debug(f"{self.bl_obj.name} - projecting fringes")
-        
-        # Set the projector image to img
-        # b_image = bpy.data.images.new("ProjectionImage", width=img.shape[0], height=img.shape[1])
-        
-        # img = cv2.cvtColor(img, cv2.COLOR_RGB2RGBA) # Blender needs alpha channel
-        # img = img.astype(np.float16) # Blender needs images as float16s between 0 and 1
-        
-        # b_image.pixels = img.ravel()
-        
-        # self.img_node.image = b_image
     
     @property
     def bl_obj(self):
@@ -297,39 +284,51 @@ class BL_FringeProjector(FringeProjector):
 # Camera
 
 class BL_Camera(Camera):
-    def __init__(self, bl_obj, samples=16):
+    def __init__(self, bl_obj):
         if not BL_Camera.is_camera(bl_obj):
             raise ValueError(f"{bl_obj.name} is not a camera")
         
-        self.__bl_obj = bl_obj
-        self.__samples = samples
+        self.bl_obj = bl_obj
 
     @property
     def resolution(self):
-        return (self.settings.resolution[0], self.settings.resolution[1])
+        return (self.bl_settings.resolution[0], self.bl_settings.resolution[1])
 
     @resolution.setter
     def resolution(self, value):
-        self.settings.resolution = value
+        self.bl_settings.resolution = value
 
     @property
     def samples(self):
-        return self.__samples
-    
+        return self.bl_settings.scene_samples 
+
     @samples.setter
     def samples(self, value):
-        self.__samples = value
+        if value < 1: 
+            self.bl_settings.scene_samples = 1
+            return
 
-    @property
-    def bl_obj(self):
-        return self.__bl_obj
+        self.bl_settings.scene_samples = value
     
+    @property
+    def channels(self) -> int:
+        if self.bl_settings.channels == "BW": return 1
+        if self.bl_settings.channels == "RGB": return 3
+        
+        return 1
+
+    @channels.setter
+    def channels(self, value):
+        if value <= 1: self.bl_settings.channels = "BW"
+        if value == 3: self.bl_settings.channels = "RGB"
+        else: self.bl_settings.channels = "BW"
+
     @property
     def position(self):
         return self.bl_obj.matrix_world.to_translation()
 
     @property
-    def settings(self):
+    def bl_settings(self):
         return self.bl_obj.camera_settings
 
     def capture(self):
@@ -352,23 +351,32 @@ class BL_Camera(Camera):
         return img
 
     def __render_and_load(self, scene):
-        scene.render.image_settings.file_format = 'PNG'
-        scene.render.image_settings.compression = 0
+        scene.render.image_settings.file_format = 'TIFF'
+        scene.render.image_settings.tiff_codec = 'NONE' # No compression
+        scene.render.image_settings.color_mode = self.bl_settings.channels # Use RGB 
+
+        scene.cycles.samples = self.bl_settings.scene_samples # Set scene sample rate
 
         # Set the filepath to use for the image render
-        file_path = Path(bpy.app.tempdir) / "render.png"
-        scene.render.filepath = str(file_path)
+        file_path = Path(get_storage_path()) / "render_temp.tiff"
+        scene.render.filepath = str(file_path.resolve())
 
         # Redirect stdout as it spams the console
         with stdout_redirected():
             bpy.ops.render.render(write_still=True)
 
-        data = cv2.imread(file_path).astype(np.float32) / 255.0
+        # Load temp image from disk
+        img = cv2.imread(scene.render.filepath, cv2.IMREAD_UNCHANGED)
+
+        # If RGB, need to load as RGB (not BGR) and uint8
+        if img.ndim == 3: img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+        img = img.astype(np.uint8) # Ensure using uint8
         
         # Delete the rendered image file
         file_path.unlink()
 
-        return data
+        return img
 
     @staticmethod
     def create_bl_obj(location, rotation):
@@ -457,6 +465,19 @@ class BL_MotorStage:
     @property
     def bl_obj(self):
         return self.__bl_obj
+    
+    def get_height(self):
+        return self.bl_obj.delta_location[2]
+    
+    def set_height(self, value):
+        if value < self.min_height:
+            self.bl_obj.delta_location[2] = self.min_height
+
+        elif self.max_height < value:
+            self.bl_obj.delta_location[2] = self.max_height
+
+        else:
+            self.bl_obj.delta_location[2] = value
     
     @staticmethod
     def is_motorstage(bl_obj):

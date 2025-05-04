@@ -13,7 +13,6 @@ class IPanelPropSection(ABC):
     def draw(self, settings: bpy.types.PropertyGroup, layout):
         pass
 
-
 # # # # # # # # # # # # # # # # # # # # #
 # Experiment
 
@@ -195,8 +194,9 @@ class CAMERA_PT_Settings(Panel):
         layout.label(text='Camera Settings:')
         box = layout.box()
 
-        box.prop(camera.settings, 'resolution')
-        # box.prop(camera_settings, 'aspect_ratio')
+        box.prop(camera.bl_settings, 'resolution')
+        box.prop(camera.bl_settings, 'scene_samples')
+        box.prop(camera.bl_settings, 'channels')
 
 
 class CHECKERBOARD_PT_Settings(Panel):

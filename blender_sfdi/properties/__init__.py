@@ -44,6 +44,16 @@ class PG_ProjSettings(bpy.types.PropertyGroup):
 class PG_CameraSettings(bpy.types.PropertyGroup):
     resolution : bpy.props.IntVectorProperty(name="Resolution", size=2, default=(1920, 1080)) # type: ignore
 
+    scene_samples : bpy.props.IntProperty(name="Scene Samples", default=64) # type: ignore
+
+    channels : bpy.props.EnumProperty(
+        name="Colour Channels",
+        description="Camera colour channels which it will use when rendering",
+        items=[
+            ("BW",  "Monochrome",   "Single Channel"),
+            ("RGB", "RGB",          "3 Channels (Red/Green/Blue)"),
+    ]) # type: ignore
+
     # sensor_size : bpy.props.FloatVectorProperty(name="Sensor Size", size=2, default=(36.0, 24.0)) # type: ignore
 
     # focal_length : bpy.props.FloatProperty(name="Focal Length", default=50.0)
@@ -86,7 +96,9 @@ def get_experiment_items(self, context):
 
     service = ExperimentService(prof_repo, img_repo)
 
-    return service.get_exp_list()
+    experiment_names = service.get_exp_list()
+
+    return list(zip(experiment_names, experiment_names, ["Experiment Name"] * len(experiment_names)))
 
 class PG_Experiment(bpy.types.PropertyGroup):
     bl_objs : bpy.props.CollectionProperty(type=PG_Object)  # type: ignore

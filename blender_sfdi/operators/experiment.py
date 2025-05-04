@@ -7,6 +7,8 @@ from opensfdi.experiment import Experiment
 from opensfdi.utils import show_heightmap, show_surface
 
 from ..properties import PG_Experiment
+from ..definitions import get_storage_path
+
 from .. import blender
 
 def hide_objects(bl_obj_ptrs, value):
@@ -83,40 +85,69 @@ class OP_Experiment(Operator):
         # Hide the objects ready for reference measurement
         hide_objects(settings.bl_objs, True)
 
-        # Run the experiment and show results
-        imgs = exp.get_imgs(camera, projector) # TODO: Allow for image generation only
+        # Run the reconstruction
+        imgs = exp.reconstruct_imgs(camera, projector)
+
+        P, phases, *_ = imgs.shape
+
+        # Setup animation settings
+        scene.frame_start = 0
+        scene.frame_step = 1
+        scene.frame_end = (phases * P) - 1
+
+        # Generate keyframes for devices
+        camera.bl_obj.animation_data_clear()
+        projector.bl_obj.animation_data_clear()
+
+        for i in range(P):
+            for j in range(phases):
+                frame_num = j + (i * phases)
+
+                # Camera frames
+                camera.bl_obj.keyframe_insert(data_path="location", frame=frame_num)
+
+                # Set scene samples rate
+                scene.cycles.samples = camera.bl_settings.scene_samples
+                scene.keyframe_insert(data_path="cycles.samples", frame=frame_num)
+
+                # Projector frames
+                projector.settings.fringe_phase = phases[j]
+                projector.settings.keyframe_insert(data_path="fringe_phase", frame=frame_num)
+
+                # projector.settings.keyframe_insert(data_path="fringe_frequency", frame=frame_num)
+                # projector.settings.keyframe_insert(data_path="fringe_rotation", frame=frame_num)
+                # projector.settings.keyframe_insert(data_path="fringe_type", frame=frame_num)
+        
+        # Render the animation
+        bpy.ops.render.render('INVOKE_DEFAULT', animation=True, write_still=True)
+
+        # Check if it was successful
+        for i in range(P):
+            for j in range(phases): 
+                frame_num = j + (i * phases)
 
         # Save the images to disk
-        for phasemap in range(imgs.shape[0]):
-            for phase in range(imgs.shape[1]):
-                blender.BL_EX_SERVICE.save_img(imgs[phasemap, phase], f'img{phasemap}_phase{phase}')
+        name = f'{settings.output_name}_img{i}_phase{j}'
+        blender.BL_EX_SERVICE.save_img(imgs[i, j], name)
 
-        # Check if we are only generating images
-        if settings.only_images: 
+        # Check if only generating images
+        if settings.only_images:
+            # TODO: Remove on_height_measurement motorstage cb
             return {'FINISHED'}
+
+        # Run calibration
+        heightmap = exp.reconstruct(imgs)
+
+        # Apply some filtering to heightmap
+        # TODO: Move this into opensfdi
+        # masked = self.mask_heightmap(heightmap)
+
+        # Convert the heightmap to a blender mesh/object
+        h_name = f'{settings.output_name}_heightmap'
+        h_mesh = blender.heightmap_to_mesh(heightmap, h_name)
         
-        # These images are currently in RGB format
-        # TODO: Add way to choose between keep channel or take mean
-        imgs = np.mean(imgs, axis=5)
-
-        heightmap = exp.heightmap(imgs)
-
-        show_heightmap(heightmap)
-        show_surface(heightmap)
-
-        # ref_imgs, imgs = experiment.run()
-
-        # for i, heightmap in enumerate(heightmaps):
-        #     #masked = self.mask_heightmap(heightmap)
-
-        #     # Convert the heightmap to a blender mesh/object
-        #     h_name = f'FPNStep_{cameras[i].name}_heightmap'
-        #     h_mesh = heightmap_to_mesh(heightmap, h_name)
-            
-        #     h_obj = bpy.data.objects.new(h_name, h_mesh)
-        #     bpy.context.collection.objects.link(h_obj)
-        
-        # TODO: Revert properties to original settings before running experiment 
+        h_obj = bpy.data.objects.new(h_name, h_mesh)
+        bpy.context.collection.objects.link(h_obj)
 
         return {'FINISHED'}
 
@@ -148,9 +179,9 @@ class OP_CalibrateProf(Operator):
 
         prof_prop = settings.profilometry.methods
         prof = getattr(scene, prof_prop).make_instance(name=settings.output_name)
-
         
         # Hide all of the objects-to-be-hidden (ready for calibration)
+        # TODO: Move to startup cb
         hide_objects(settings.bl_objs, True)
 
         # Check if a motor stage is needed by the calibration method
@@ -160,47 +191,70 @@ class OP_CalibrateProf(Operator):
 
         motor_stage = blender.BL_MotorStage(settings.motor_stage)
         
+        # Create experiment
         exp = Experiment(settings.output_name, prof, ph_shift, ph_unwrap)
+        exp.on_height_measurement(motor_stage.set_height) # Update motor stage at each height
 
-        heights = np.linspace(motor_stage.min_height, motor_stage.max_height, motor_stage.steps)
+        # Linear interp heights
+        # TODO: Support different interp, e.g polynomial granular, bell curve, etc.
+        n_count = np.linspace(motor_stage.min_height, motor_stage.max_height, motor_stage.steps)
+        
+        # Get calibration images
+        height_imgs = exp.calibrate_imgs(camera, projector, n_count)
+        n_count, phase_count, *_ = height_imgs.shape
 
-        height_imgs = []
-        for height in heights:
-            motor_stage.bl_obj.delta_location[2] = height
-            imgs = exp.get_imgs(camera, projector)
-            height_imgs.append(imgs)
-
-        # Reset motor stage back to 0
-        motor_stage.bl_obj.delta_location[2] = 0.0
-
-        height_imgs = np.array(height_imgs)
-
-        # Height Phasemap Phase 
+        # Generate keyframes for devices
+        camera.bl_obj.animation_data_clear()
+        projector.bl_obj.animation_data_clear()
 
         # Save the images to disk
-        for h in range(motor_stage.steps):
-            for ph in range(height_imgs.shape[1]):
-                for p in range(height_imgs.shape[2]):
-                    temp = height_imgs[h, ph, p]
-                    img_name = f'{settings.output_name}_calib{h}_{ph}_phase{p}'
-                    print(temp.shape)
-                    blender.BL_EX_SERVICE.save_img(temp, img_name)
+        for i in range(n_count):
+            for j in range(phase_count):
+                name = f'{settings.output_name}_calib{i}_phase{j}'
+                blender.BL_EX_SERVICE.save_img(height_imgs[i, j], name)
 
-        # Check if we are only generating images
-        if settings.only_images: 
+
+        # Setup animation settings
+        scene.frame_start = 0
+        scene.frame_step = 1
+        scene.frame_end = (phases * P) - 1
+
+        for i in range(P):
+            for j in range(phases):
+                frame_num = j + (i * phases)
+
+                # Camera frames
+                camera.bl_obj.keyframe_insert(data_path="location", frame=frame_num)
+
+                # Set scene samples rate
+                scene.cycles.samples = camera.bl_settings.scene_samples
+                scene.keyframe_insert(data_path="cycles.samples", frame=frame_num)
+
+                # Projector frames
+                projector.settings.fringe_phase = phases[j]
+                projector.settings.keyframe_insert(data_path="fringe_phase", frame=frame_num)
+
+                # projector.settings.keyframe_insert(data_path="fringe_frequency", frame=frame_num)
+                # projector.settings.keyframe_insert(data_path="fringe_rotation", frame=frame_num)
+                # projector.settings.keyframe_insert(data_path="fringe_type", frame=frame_num)
+
+        # Check if only generating images
+        if settings.only_images:
+            # TODO: Remove on_height_measurement motorstage cb
             return {'FINISHED'}
-        
-        # These images are currently in RGB format
-        # TODO: Add way to choose between keep channel or take mean
-        height_imgs = np.mean(height_imgs, axis=5)
-    
-        exp.calibrate(height_imgs, heights)
+
+        # Run calibration
+        exp.calibrate(height_imgs, n_count)
 
         # Save the calibration
         blender.BL_EX_SERVICE.save_experiment(exp)
 
+        # TODO: Remove on_height_measurement motorstage cb
         return {'FINISHED'}
-        
+
+    @classmethod
+    def description(cls, context, event):
+        return f"Directory: {str(get_storage_path())}"      
 
 
 classes = [
