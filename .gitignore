@@ -1,3 +1,14 @@
+BlenderSFDI*.zip
+build_extension.sh
+poetry.lock
+blender_sfdi/wheels
+
+.vscode
+dists/
+
+.python-version
+.vscode
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

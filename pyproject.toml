@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "blender-sfdi"
+version = "0.1.0"
+description = ""
+authors = ["Daniel Weston <psydw2@nottingham.ac.uk>"]
+readme = "README.md"
+packages = [{include = "*", from="src"}]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "3.11.7"
+bpy = "4.2.0"
+opensfdi = {path = "../opensfdi", develop = true}
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
